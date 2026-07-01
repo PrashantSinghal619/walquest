@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Exchange failed — send back to login with an error.
+  // Exchange failed — link is expired, already used, or malformed.
   return NextResponse.redirect(
-    new URL("/auth/login?error=Could+not+sign+you+in", origin)
+    new URL(
+      "/auth/login?error=This+link+has+expired+or+already+been+used.+Request+a+new+one.",
+      origin
+    )
   );
 }
