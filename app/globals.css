@@ -152,4 +152,32 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Tailwind Preflight strips browser-default cursors — restore them explicitly. */
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not(:disabled),
+  textarea:not(:disabled) {
+    cursor: text;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
