@@ -4,18 +4,34 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-// Bengaluru city centre [longitude, latitude]
 const BENGALURU: [number, number] = [77.5946, 12.9716];
-// OpenFreeMap — free, no API key, vector tiles
 const OFMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-export default function TerritoryMap() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  // Hold the Map instance across renders without triggering re-renders
-  const mapRef = useRef<maplibregl.Map | null>(null);
+// Theme palette colours as hex — MapLibre layer paint can't use CSS vars
+const TERRITORY_FILL   = "#828B6A"; // Sage
+const TERRITORY_STROKE = "#4A5240"; // darker Sage
+const WALK_PATH_COLOR  = "#C25B3F"; // Terracotta
 
+const EMPTY_GEOJSON: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+interface TerritoryMapProps {
+  walkPoints: Array<[number, number]>; // [lng, lat] — GeoJSON order
+  currentPosition: [number, number] | null;
+  territoriesVersion: number; // increment to re-fetch territories
+}
+
+export default function TerritoryMap({
+  walkPoints,
+  currentPosition,
+  territoriesVersion,
+}: TerritoryMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef       = useRef<maplibregl.Map | null>(null);
+  const markerRef    = useRef<maplibregl.Marker | null>(null);
+  const mapReadyRef  = useRef(false); // true once map 'load' has fired
+
+  // ── Init: create map, add sources + layers ──────────────────────────────────
   useEffect(() => {
-    // Guard: skip if already initialised or container not yet in DOM
     if (!containerRef.current || mapRef.current) return;
 
     const map = new maplibregl.Map({
@@ -23,21 +39,66 @@ export default function TerritoryMap() {
       style: OFMAP_STYLE,
       center: BENGALURU,
       zoom: 13,
-      // Disable the default inline attribution so we can use compact mode
       attributionControl: false,
     });
 
-    map.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-      "bottom-right"
-    );
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    map.on("load", () => {
+      // Territories layer — static polygons from /api/territories
+      map.addSource("territories", { type: "geojson", data: EMPTY_GEOJSON });
+      map.addLayer({
+        id: "territories-fill",
+        type: "fill",
+        source: "territories",
+        paint: {
+          "fill-color": TERRITORY_FILL,
+          "fill-opacity": 0.35,
+        },
+      });
+      map.addLayer({
+        id: "territories-outline",
+        type: "line",
+        source: "territories",
+        paint: {
+          "line-color": TERRITORY_STROKE,
+          "line-width": 2,
+        },
+      });
+
+      // Live walk-path layer — updates as GPS points come in
+      map.addSource("walk-path", { type: "geojson", data: EMPTY_GEOJSON });
+      map.addLayer({
+        id: "walk-path-line",
+        type: "line",
+        source: "walk-path",
+        paint: {
+          "line-color": WALK_PATH_COLOR,
+          "line-width": 3,
+          "line-dasharray": [2, 1],
+        },
+      });
+
+      // GPS position marker
+      const el = document.createElement("div");
+      el.className = "gps-dot";
+      el.style.cssText =
+        "width:14px;height:14px;border-radius:50%;background:#C25B3F;border:2px solid #fff;box-shadow:0 0 0 4px rgba(194,91,63,0.25)";
+
+      markerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat(BENGALURU)
+        .addTo(map);
+      markerRef.current.getElement().style.display = "none";
+
+      mapReadyRef.current = true;
+
+      // Load initial territories
+      fetchAndSetTerritories(map);
+    });
 
     mapRef.current = map;
 
-    // MapLibre reads the container dimensions at init time. If the layout
-    // settles after init (e.g. scrollbar appears/disappears, dev toolbar
-    // renders), the canvas stays stale. ResizeObserver keeps it in sync.
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
 
@@ -45,10 +106,72 @@ export default function TerritoryMap() {
       ro.disconnect();
       map.remove();
       mapRef.current = null;
+      mapReadyRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The div must be a direct DOM child of the flex column so flex-1
-  // gives it the remaining viewport height — MapLibre needs explicit px height.
+  // ── Re-fetch territories when a claim succeeds ──────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || !mapReadyRef.current) return;
+    fetchAndSetTerritories(mapRef.current);
+  }, [territoriesVersion]);
+
+  // ── Update walk-path source as GPS points accumulate ───────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current) return;
+
+    const source = map.getSource("walk-path") as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    if (walkPoints.length < 2) {
+      source.setData(EMPTY_GEOJSON);
+      return;
+    }
+
+    source.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: walkPoints },
+          properties: {},
+        },
+      ],
+    });
+  }, [walkPoints]);
+
+  // ── Move GPS marker when position updates ──────────────────────────────────
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (!marker) return;
+
+    if (!currentPosition) {
+      marker.getElement().style.display = "none";
+      return;
+    }
+
+    marker.setLngLat(currentPosition);
+    marker.getElement().style.display = "block";
+
+    // Pan to current position if the user started walking and it's the first point
+    if (mapRef.current && walkPoints.length === 1) {
+      mapRef.current.panTo(currentPosition, { duration: 500 });
+    }
+  }, [currentPosition, walkPoints.length]);
+
   return <div ref={containerRef} className="flex-1 w-full" />;
+}
+
+async function fetchAndSetTerritories(map: maplibregl.Map) {
+  try {
+    const res = await fetch("/api/territories", { cache: "no-store" });
+    if (!res.ok) return;
+    const geojson = await res.json();
+    const source = map.getSource("territories") as maplibregl.GeoJSONSource | undefined;
+    source?.setData(geojson);
+  } catch {
+    // Non-fatal — map still works without territories
+  }
 }
