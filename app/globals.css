@@ -111,7 +111,7 @@
   --popover-foreground: oklch(0.9512 0.0203 94.53); /* Parchment */
 
   --primary: oklch(0.6203 0.0488 120.23); /* Sage */
-  --primary-foreground: oklch(0.2927 0.0127 120.16); /* Olivewood */
+  --primary-foreground: oklch(0.9512 0.0203 94.53); /* Parchment — light text on Sage button */
 
   --secondary: oklch(0.4842 0.0266 96.26); /* Bark */
   --secondary-foreground: oklch(0.9512 0.0203 94.53); /* Parchment */
@@ -138,7 +138,7 @@
   --sidebar: oklch(0.2606 0.0096 124.88); /* darker than background, for contrast */
   --sidebar-foreground: oklch(0.9512 0.0203 94.53); /* Parchment */
   --sidebar-primary: oklch(0.6203 0.0488 120.23); /* Sage */
-  --sidebar-primary-foreground: oklch(0.2927 0.0127 120.16); /* Olivewood */
+  --sidebar-primary-foreground: oklch(0.9512 0.0203 94.53); /* Parchment */
   --sidebar-accent: oklch(0.4842 0.0266 96.26); /* Bark */
   --sidebar-accent-foreground: oklch(0.9512 0.0203 94.53); /* Parchment */
   --sidebar-border: oklch(0.9512 0.0203 94.53 / 12%);

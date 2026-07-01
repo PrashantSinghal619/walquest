@@ -57,12 +57,12 @@ async function FlashMessages({
   return (
     <>
       {message && (
-        <p className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+        <p className="rounded-md border border-primary/40 bg-primary/20 px-4 py-3 text-sm font-medium text-foreground">
           {message}
         </p>
       )}
       {error && (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p className="rounded-md border border-destructive/40 bg-destructive/20 px-4 py-3 text-sm font-medium text-foreground">
           {error}
         </p>
       )}
