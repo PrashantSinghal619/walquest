@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { HeroBackground } from "@/components/hero-background";
@@ -38,7 +39,9 @@ export default function Home() {
         <Suspense fallback={<div className="h-5 w-48 animate-pulse rounded bg-muted" />}>
           <LiveBadge />
         </Suspense>
-        <Button size="lg">Get started</Button>
+        <Button size="lg" asChild>
+          <Link href="/auth/login">Get started</Link>
+        </Button>
       </main>
     </div>
   );
