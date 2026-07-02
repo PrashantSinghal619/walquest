@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI assistant — personal/local overrides only
+# Shared guardrails (.agents/, .claude/settings.json, .claude/skills/) ARE committed
+.claude/settings.local.json
+.cursor/
+.idea/
+.vscode/settings.json

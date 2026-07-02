@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(git commit*)",
+            "statusMessage": "Checking critical paths before commit...",
+            "timeout": 120,
+            "prompt": "You are a pre-commit guard for the walquest app (Next.js territory-conquest walking tracker).\n\nFirst, run: git diff --cached --name-only\n\nCritical business paths that require review before committing:\n- app/actions/walks.ts         (Server Actions: startWalk, completeWalk, discardWalk)\n- lib/geo/polygon.ts           (PostGIS polygon building: simplify, kinks, area)\n- proxy.ts                     (Auth middleware protecting /map /leaderboard /profile)\n- lib/supabase/                (Supabase client helpers)\n- app/(app)/map/_components/   (Walk recording UI: GPS, state machine, MapLibre)\n\nIf ANY staged file path matches one of the critical paths above:\n  1. Invoke the /testing-strategy skill so it can assess what tests are needed for the staged changes.\n  2. Invoke the /code-review skill so it can flag correctness bugs, security issues, or regressions.\n  Report findings clearly so the developer can decide whether to proceed or fix first.\n\nIf NO staged files touch a critical path, output nothing and allow the commit to proceed silently."
+          }
+        ]
+      }
+    ]
+  }
+}

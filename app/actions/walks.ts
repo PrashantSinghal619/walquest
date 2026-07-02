@@ -9,7 +9,7 @@ export type StartWalkResult =
   | { ok: false; error: string };
 
 export type CompleteWalkResult =
-  | { ok: true; territoryId: string; areaM2: number }
+  | { ok: true; territoryId: string; areaM2: number; clippedCount: number; lostCount: number }
   | { ok: false; error: string };
 
 export async function startWalk(): Promise<StartWalkResult> {
@@ -87,9 +87,11 @@ export async function completeWalk(
 
   const { polygon, areaM2 } = result;
 
-  // Insert via PostGIS RPC (ST_GeomFromGeoJSON lives in Postgres, not JS)
-  const { data: territoryId, error: insertError } = await supabase.rpc(
-    "insert_territory",
+  // Atomic conflict resolution + insert via PostGIS RPC.
+  // claim_territory handles ST_Intersects + ST_Difference + territory_events
+  // in a single transaction so no partial state is possible.
+  const { data: claimResult, error: claimError } = await supabase.rpc(
+    "claim_territory",
     {
       p_owner_id: user.id,
       p_walk_id: walkId,
@@ -98,11 +100,14 @@ export async function completeWalk(
     }
   );
 
-  if (insertError || !territoryId) {
+  if (claimError || !claimResult) {
     return { ok: false, error: "Failed to save territory. Try again." };
   }
 
-  // Persist path + mark complete in one update
+  const { territory_id: territoryId, clipped_count: clippedCount, lost_count: lostCount } =
+    claimResult as { territory_id: string; clipped_count: number; lost_count: number };
+
+  // Persist path + mark complete
   await supabase
     .from("walks")
     .update({
@@ -112,16 +117,7 @@ export async function completeWalk(
     })
     .eq("id", walkId);
 
-  // Territory event — drives the leaderboard (Phase 6) and Realtime (Phase 5)
-  await supabase.from("territory_events").insert({
-    territory_id: territoryId,
-    walk_id: walkId,
-    actor_id: user.id,
-    type: "claimed",
-    area_delta_m2: areaM2,
-  });
-
   revalidatePath("/map");
 
-  return { ok: true, territoryId, areaM2 };
+  return { ok: true, territoryId, areaM2, clippedCount, lostCount };
 }

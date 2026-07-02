@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "./_components/user-menu";
+import { Providers } from "./providers";
 
 // Why cookies() is called here but not awaited:
 //
@@ -64,7 +65,9 @@ export default function AppLayout({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col">{children}</main>
+      <main className="flex flex-1 flex-col">
+        <Providers>{children}</Providers>
+      </main>
     </div>
   );
 }

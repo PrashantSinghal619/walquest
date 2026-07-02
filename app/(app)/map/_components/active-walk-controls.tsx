@@ -16,7 +16,7 @@ type WalkState =
   | { phase: "starting" }
   | { phase: "tracking"; walkId: string }
   | { phase: "claiming"; walkId: string }
-  | { phase: "success"; areaM2: number }
+  | { phase: "success"; areaM2: number; clippedCount: number; lostCount: number }
   | { phase: "error"; message: string };
 
 export function ActiveWalkControls({
@@ -95,7 +95,12 @@ export function ActiveWalkControls({
         return;
       }
 
-      setState({ phase: "success", areaM2: result.areaM2 });
+      setState({
+        phase: "success",
+        areaM2: result.areaM2,
+        clippedCount: result.clippedCount,
+        lostCount: result.lostCount,
+      });
       onClaimSuccess();
 
       // Reset to idle after 3 s
@@ -166,12 +171,24 @@ export function ActiveWalkControls({
         )}
 
         {state.phase === "success" && (
-          <p className="text-sm font-medium text-foreground">
-            ✓ Territory claimed!{" "}
-            <span className="text-muted-foreground font-normal">
-              {(state.areaM2 / 1_000_000).toFixed(4)} km²
-            </span>
-          </p>
+          <div className="flex flex-col items-center gap-0.5">
+            <p className="text-sm font-medium text-foreground">
+              ✓ Territory claimed!{" "}
+              <span className="text-muted-foreground font-normal">
+                {(state.areaM2 / 1_000_000).toFixed(4)} km²
+              </span>
+            </p>
+            {(state.clippedCount > 0 || state.lostCount > 0) && (
+              <p className="text-xs text-muted-foreground">
+                {[
+                  state.clippedCount > 0 && `clipped ${state.clippedCount}`,
+                  state.lostCount > 0 && `destroyed ${state.lostCount}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+          </div>
         )}
 
         {state.phase === "error" && (

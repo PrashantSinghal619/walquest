@@ -17,13 +17,13 @@ const EMPTY_GEOJSON: GeoJSON.FeatureCollection = { type: "FeatureCollection", fe
 interface TerritoryMapProps {
   walkPoints: Array<[number, number]>; // [lng, lat] — GeoJSON order
   currentPosition: [number, number] | null;
-  territoriesVersion: number; // increment to re-fetch territories
+  geojson: GeoJSON.FeatureCollection;  // managed by TanStack Query in MapClient
 }
 
 export default function TerritoryMap({
   walkPoints,
   currentPosition,
-  territoriesVersion,
+  geojson,
 }: TerritoryMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<maplibregl.Map | null>(null);
@@ -46,7 +46,7 @@ export default function TerritoryMap({
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      // Territories layer — static polygons from /api/territories
+      // Territories layer — data flows in via the geojson prop
       map.addSource("territories", { type: "geojson", data: EMPTY_GEOJSON });
       map.addLayer({
         id: "territories-fill",
@@ -92,9 +92,6 @@ export default function TerritoryMap({
       markerRef.current.getElement().style.display = "none";
 
       mapReadyRef.current = true;
-
-      // Load initial territories
-      fetchAndSetTerritories(map);
     });
 
     mapRef.current = map;
@@ -111,11 +108,12 @@ export default function TerritoryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-fetch territories when a claim succeeds ──────────────────────────────
+  // ── Push updated territories into MapLibre whenever the prop changes ────────
   useEffect(() => {
     if (!mapRef.current || !mapReadyRef.current) return;
-    fetchAndSetTerritories(mapRef.current);
-  }, [territoriesVersion]);
+    const source = mapRef.current.getSource("territories") as maplibregl.GeoJSONSource | undefined;
+    source?.setData(geojson);
+  }, [geojson]);
 
   // ── Update walk-path source as GPS points accumulate ───────────────────────
   useEffect(() => {
@@ -155,23 +153,10 @@ export default function TerritoryMap({
     marker.setLngLat(currentPosition);
     marker.getElement().style.display = "block";
 
-    // Pan to current position if the user started walking and it's the first point
     if (mapRef.current && walkPoints.length === 1) {
       mapRef.current.panTo(currentPosition, { duration: 500 });
     }
   }, [currentPosition, walkPoints.length]);
 
   return <div ref={containerRef} className="flex-1 w-full" />;
-}
-
-async function fetchAndSetTerritories(map: maplibregl.Map) {
-  try {
-    const res = await fetch("/api/territories", { cache: "no-store" });
-    if (!res.ok) return;
-    const geojson = await res.json();
-    const source = map.getSource("territories") as maplibregl.GeoJSONSource | undefined;
-    source?.setData(geojson);
-  } catch {
-    // Non-fatal — map still works without territories
-  }
 }
