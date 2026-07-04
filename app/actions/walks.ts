@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { buildPolygon } from "@/lib/geo/polygon";
 
@@ -118,6 +118,7 @@ export async function completeWalk(
     .eq("id", walkId);
 
   revalidatePath("/map");
+  updateTag("leaderboard");
 
   return { ok: true, territoryId, areaM2, clippedCount, lostCount };
 }
