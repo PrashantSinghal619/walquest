@@ -19,7 +19,7 @@ export async function createClient() {
             }
           } catch {
             // setAll called from a Server Component without a surrounding
-            // Server Action / Route Handler — safe to ignore if middleware
+            // Server Action / Route Handler - safe to ignore if middleware
             // is refreshing the session.
           }
         },

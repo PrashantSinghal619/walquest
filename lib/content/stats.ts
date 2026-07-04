@@ -1,6 +1,6 @@
 import { cacheLife } from "next/cache";
 
-// Intentionally uncached — simulates a live data source that must stay fresh.
+// Intentionally uncached - simulates a live data source that must stay fresh.
 // Calling this from a component without Suspense should be caught by unstable_instant.
 export async function getLiveWalkerCount(): Promise<number> {
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -9,7 +9,7 @@ export async function getLiveWalkerCount(): Promise<number> {
 
 /**
  * Marketing copy that rarely changes. A real version of this might read
- * from a CMS or database — caching it means that work happens once at
+ * from a CMS or database - caching it means that work happens once at
  * build/first-request time, not on every page load.
  */
 export async function getLaunchTagline() {

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function signIn(formData: FormData) {
   const email = formData.get("email");
   if (typeof email !== "string" || !email) {
-    redirect("/auth/login?error=Email+is+required");
+    redirect("/auth/login?error=Oi,+we+need+your+email+first!");
   }
 
   const supabase = await createClient();
@@ -21,7 +21,7 @@ export async function signIn(formData: FormData) {
     redirect(`/auth/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/auth/login?message=Check+your+email+for+the+magic+link");
+  redirect("/auth/login?message=Magic+link+incoming!+Check+your+inbox.");
 }
 
 export async function signOut() {

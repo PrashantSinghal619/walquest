@@ -1,7 +1,7 @@
 /**
  * Decorative, purely ornamental background for the hero section.
  *
- * Mobile-first only (~390-430px wide viewports) — no responsive variants
+ * Mobile-first only (~390-430px wide viewports) - no responsive variants
  * for larger screens yet, that's deferred.
  *
  * Motifs: a GPS walking route that closes into a claimed "territory"
@@ -10,7 +10,7 @@
  * variables so it adapts to light/dark automatically without any JS.
  *
  * This is a static inline SVG: no randomness, no client state, no
- * network/image requests — safe under static prerendering and won't
+ * network/image requests - safe under static prerendering and won't
  * affect LCP since it carries no text and sits behind the hero copy.
  */
 export function HeroBackground() {

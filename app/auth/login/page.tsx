@@ -3,7 +3,7 @@ import { signIn } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 
 // searchParams is dynamic (per-request), so it must be awaited inside a
-// Suspense boundary — same rule as any uncached async component.
+// Suspense boundary - same rule as any uncached async component.
 // The heading and form are pure static JSX; they render before searchParams
 // resolves and are never delayed.
 
@@ -24,7 +24,7 @@ export default function LoginPage({
           </p>
         </div>
 
-        {/* Flash messages resolve after searchParams — static form renders first */}
+        {/* Flash messages resolve after searchParams - static form renders first */}
         <Suspense fallback={null}>
           <FlashMessages searchParams={searchParams} />
         </Suspense>

@@ -48,7 +48,7 @@ export function ActiveWalkControls({
 
   function startGps() {
     if (!("geolocation" in navigator)) {
-      setState({ phase: "error", message: "GPS not available on this device." });
+      setState({ phase: "error", message: "No GPS here! Pull this up on your phone to start tracking your walk." });
       return;
     }
 
@@ -60,7 +60,12 @@ export function ActiveWalkControls({
         onPositionUpdate(point);
       },
       (err) => {
-        setState({ phase: "error", message: `GPS error: ${err.message}` });
+        const gpsMessages: Record<number, string> = {
+          1: "We can't see you! Allow location access in your settings, then give it another go.",
+          2: "Satellites lost you! Head somewhere open - away from walls and under the sky.",
+          3: "Satellites are being shy. Step outside somewhere open and try again.",
+        };
+        setState({ phase: "error", message: gpsMessages[err.code] ?? "GPS went quiet on us. Give it a moment and try again." });
         stopGps();
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -139,13 +144,13 @@ export function ActiveWalkControls({
         )}
 
         {state.phase === "starting" && (
-          <p className="text-sm text-muted-foreground">Starting…</p>
+          <p className="text-sm text-muted-foreground">Locking you in…</p>
         )}
 
         {state.phase === "tracking" && (
           <>
             <p className="text-xs text-muted-foreground tabular-nums">
-              {points.length} pts · {distanceKm.toFixed(2)} km
+              {points.length} points · {distanceKm.toFixed(2)} km
             </p>
             <div className="flex gap-2 w-full">
               <Button
@@ -167,7 +172,7 @@ export function ActiveWalkControls({
         )}
 
         {(state.phase === "claiming" || isPending) && (
-          <p className="text-sm text-muted-foreground">Claiming…</p>
+          <p className="text-sm text-muted-foreground">Planting your flag…</p>
         )}
 
         {state.phase === "success" && (
@@ -182,7 +187,7 @@ export function ActiveWalkControls({
               <p className="text-xs text-muted-foreground">
                 {[
                   state.clippedCount > 0 && `clipped ${state.clippedCount}`,
-                  state.lostCount > 0 && `destroyed ${state.lostCount}`,
+                  state.lostCount > 0 && `erased ${state.lostCount}`,
                 ]
                   .filter(Boolean)
                   .join(" · ")}

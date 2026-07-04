@@ -31,7 +31,7 @@ export async function proxy(request: NextRequest) {
   );
 
   // getUser() validates the JWT and triggers a token refresh if needed.
-  // Never use getSession() in proxy — it trusts the cookie without server
+  // Never use getSession() in proxy - it trusts the cookie without server
   // verification and can be spoofed.
   const {
     data: { user },
@@ -44,6 +44,12 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Already signed in - no reason to see the landing page or login form
+  const isAuthPage = pathname === "/" || pathname === "/auth/login";
+  if (isAuthPage && user) {
+    return NextResponse.redirect(new URL("/map", request.url));
   }
 
   return response;

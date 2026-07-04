@@ -23,7 +23,7 @@ export default function Home() {
         </h1>
         {/*
          * Tagline is async + 'use cache'. The Suspense boundary is still
-         * required — unstable_instant validates structure, not whether the
+         * required - unstable_instant validates structure, not whether the
          * cache will be warm. The fallback is sized to match so there's no
          * CLS when the cached content resolves.
          */}
@@ -33,7 +33,7 @@ export default function Home() {
         {/*
          * LiveBadge is uncached (fresh per-request data). Wrapping it in
          * Suspense lets the static shell paint immediately while the live
-         * count streams in — this is the correct pattern for mixing cached
+         * count streams in - this is the correct pattern for mixing cached
          * and dynamic content on the same page.
          */}
         <Suspense fallback={<div className="h-5 w-48 animate-pulse rounded bg-muted" />}>
@@ -52,7 +52,7 @@ async function Tagline() {
   return <p className="text-muted-foreground max-w-md text-lg">{tagline}</p>;
 }
 
-// No 'use cache', no Suspense wrapping it at call site — will block instant nav
+// No 'use cache', no Suspense wrapping it at call site - will block instant nav
 async function LiveBadge() {
   const count = await getLiveWalkerCount();
   return (

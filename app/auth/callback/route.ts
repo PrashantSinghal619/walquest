@@ -14,10 +14,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Exchange failed — link is expired, already used, or malformed.
+  // Exchange failed - link is expired, already used, or malformed.
   return NextResponse.redirect(
     new URL(
-      "/auth/login?error=This+link+has+expired+or+already+been+used.+Request+a+new+one.",
+      "/auth/login?error=That+link%27s+gone+cold!+Pop+your+email+in+to+get+a+fresh+one.",
       origin
     )
   );

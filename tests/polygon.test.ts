@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildPolygon } from "../lib/geo/polygon";
 
-// All coordinates are [longitude, latitude] — GeoJSON order, not Geolocation API order.
+// All coordinates are [longitude, latitude] - GeoJSON order, not Geolocation API order.
 
 describe("buildPolygon", () => {
   // ~1.1km × ~1.1km square in central Bengaluru
@@ -27,7 +27,7 @@ describe("buildPolygon", () => {
       [77.60, 12.97],
     ]);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("3 GPS points");
+    if (!result.ok) expect(result.error).toContain("Not so fast");
   });
 
   it("rejects all-identical GPS points (GPS jitter at standstill)", () => {
@@ -37,11 +37,11 @@ describe("buildPolygon", () => {
       [77.590, 12.970],
     ]);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("too close together");
+    if (!result.ok) expect(result.error).toContain("Did you even leave");
   });
 
   it("rejects a self-intersecting path (bowtie / figure-8)", () => {
-    // Two diagonals of a rectangle — they cross at the centre
+    // Two diagonals of a rectangle - they cross at the centre
     const bowtie: Array<[number, number]> = [
       [77.590, 12.970], // bottom-left
       [77.600, 12.980], // top-right
@@ -50,11 +50,11 @@ describe("buildPolygon", () => {
     ];
     const result = buildPolygon(bowtie);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("crosses itself");
+    if (!result.ok) expect(result.error).toContain("crossed your own path");
   });
 
   it("rejects a polygon below the 500 m² minimum area", () => {
-    // ~11m × ~11m right triangle ≈ 60 m² — well below the floor
+    // ~11m × ~11m right triangle ≈ 60 m² - well below the floor
     const tiny: Array<[number, number]> = [
       [77.5900, 12.9700],
       [77.5901, 12.9700],
@@ -62,7 +62,7 @@ describe("buildPolygon", () => {
     ];
     const result = buildPolygon(tiny);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("too small");
+    if (!result.ok) expect(result.error).toContain("barely a doorstep");
   });
 
   it("area is proportional to loop size (sanity check)", () => {

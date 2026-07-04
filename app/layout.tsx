@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "walquest",
   description: "Walk it. Claim it. Defend it. Bengaluru's territory game.",
   // Declared explicitly so Next.js treats this as static metadata, not
-  // file-based metadata — app/favicon.ico would trigger dynamic metadata
+  // file-based metadata - app/favicon.ico would trigger dynamic metadata
   // processing which breaks unstable_instant validation.
   icons: { icon: "/favicon.ico" },
 };

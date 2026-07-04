@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 const BENGALURU: [number, number] = [77.5946, 12.9716];
 const OFMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-// Theme palette colours as hex — MapLibre layer paint can't use CSS vars
+// Theme palette colours as hex - MapLibre layer paint can't use CSS vars
 const TERRITORY_FILL   = "#828B6A"; // Sage
 const TERRITORY_STROKE = "#4A5240"; // darker Sage
 const WALK_PATH_COLOR  = "#C25B3F"; // Terracotta
@@ -15,7 +15,7 @@ const WALK_PATH_COLOR  = "#C25B3F"; // Terracotta
 const EMPTY_GEOJSON: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 interface TerritoryMapProps {
-  walkPoints: Array<[number, number]>; // [lng, lat] — GeoJSON order
+  walkPoints: Array<[number, number]>; // [lng, lat] - GeoJSON order
   currentPosition: [number, number] | null;
   geojson: GeoJSON.FeatureCollection;  // managed by TanStack Query in MapClient
 }
@@ -46,7 +46,7 @@ export default function TerritoryMap({
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     map.on("load", () => {
-      // Territories layer — data flows in via the geojson prop
+      // Territories layer - data flows in via the geojson prop
       map.addSource("territories", { type: "geojson", data: EMPTY_GEOJSON });
       map.addLayer({
         id: "territories-fill",
@@ -67,7 +67,7 @@ export default function TerritoryMap({
         },
       });
 
-      // Live walk-path layer — updates as GPS points come in
+      // Live walk-path layer - updates as GPS points come in
       map.addSource("walk-path", { type: "geojson", data: EMPTY_GEOJSON });
       map.addLayer({
         id: "walk-path-line",

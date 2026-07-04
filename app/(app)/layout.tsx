@@ -8,19 +8,19 @@ import { Providers } from "./providers";
 // Why cookies() is called here but not awaited:
 //
 // Under cacheComponents: true, calling cookies() in this layout marks the
-// route as dynamic — it re-runs on every request. That's unavoidable because
+// route as dynamic - it re-runs on every request. That's unavoidable because
 // the nav must reflect the current user's session.
 //
 // But we don't await it at the top of this function. Instead we pass the
 // Promise down to <UserMenu>, which is wrapped in Suspense. This means:
 //
 //   1. The nav chrome (logo, links, ThemeToggle) renders synchronously and
-//      reaches the browser as the static shell — fast first paint.
+//      reaches the browser as the static shell - fast first paint.
 //   2. UserMenu suspends while it awaits the cookie store + Supabase call.
 //      The fallback skeleton streams in, then swaps out when the user
 //      session resolves. LCP is never blocked.
 //
-// The alternative — awaiting cookies() here — would block the entire layout
+// The alternative - awaiting cookies() here - would block the entire layout
 // render until the cookie store is ready, delaying even the logo.
 
 export default function AppLayout({

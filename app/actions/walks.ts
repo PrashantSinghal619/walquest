@@ -56,7 +56,7 @@ export async function discardWalk(walkId: string): Promise<{ ok: boolean }> {
  * Closes and validates the GPS trace, inserts a territory via PostGIS, and
  * marks the walk completed.
  *
- * points: array of [longitude, latitude] — GeoJSON order, NOT Geolocation API
+ * points: array of [longitude, latitude] - GeoJSON order, NOT Geolocation API
  * order. The client must convert before calling.
  */
 export async function completeWalk(
@@ -69,7 +69,7 @@ export async function completeWalk(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated." };
 
-  // Ownership check — never trust the client for authz
+  // Ownership check - never trust the client for authz
   const { data: walk } = await supabase
     .from("walks")
     .select("id, status")

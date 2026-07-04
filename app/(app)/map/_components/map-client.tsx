@@ -1,7 +1,7 @@
 "use client";
 
 // This file exists to hold the dynamic() call with ssr:false (required by
-// Next.js 16 — ssr:false is only valid inside a Client Component).
+// Next.js 16 - ssr:false is only valid inside a Client Component).
 //
 // It also owns:
 //   • Territory data via TanStack Query (polling + Realtime invalidation)
@@ -62,7 +62,7 @@ export function MapClient() {
   const handleClaimSuccess = useCallback(() => {
     setWalkPoints([]);
     setCurrentPosition(null);
-    // Immediately refetch — don't wait for Realtime or the polling interval
+    // Immediately refetch - don't wait for Realtime or the polling interval
     queryClient.invalidateQueries({ queryKey: ["territories"] });
   }, [queryClient]);
 

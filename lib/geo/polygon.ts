@@ -1,7 +1,7 @@
 import { lineString, polygon, area as turfArea, simplify, kinks } from "@turf/turf";
 import type { Feature, Polygon } from "geojson";
 
-// Minimum territory size — roughly a 25m × 25m square around Bengaluru's latitude
+// Minimum territory size - roughly a 25m × 25m square around Bengaluru's latitude
 const MIN_AREA_M2 = 500;
 
 export type PolygonResult =
@@ -12,12 +12,12 @@ export type PolygonResult =
  * Takes a GPS trace as [lng, lat] pairs, simplifies, closes, validates, and
  * returns a GeoJSON Polygon or a user-friendly error.
  *
- * Coordinate order throughout: [longitude, latitude] — GeoJSON/MapLibre/Turf
+ * Coordinate order throughout: [longitude, latitude] - GeoJSON/MapLibre/Turf
  * convention, NOT the Geolocation API order.
  */
 export function buildPolygon(points: Array<[number, number]>): PolygonResult {
   if (points.length < 3) {
-    return { ok: false, error: "Need at least 3 GPS points to form a territory." };
+    return { ok: false, error: "Not so fast! Walk around a bit more before you can stake your claim." };
   }
 
   // Drop consecutive duplicate points from GPS jitter
@@ -26,7 +26,7 @@ export function buildPolygon(points: Array<[number, number]>): PolygonResult {
   );
 
   if (deduped.length < 3) {
-    return { ok: false, error: "GPS points are too close together — walk further first." };
+    return { ok: false, error: "Did you even leave the house? Walk a wider path and try again!" };
   }
 
   // Simplify: tolerance ~5.5 m at Bengaluru latitude (≈ 12.97° N)
@@ -35,7 +35,7 @@ export function buildPolygon(points: Array<[number, number]>): PolygonResult {
   const coords = simplified.geometry.coordinates as Array<[number, number]>;
 
   if (coords.length < 3) {
-    return { ok: false, error: "Path simplified to fewer than 3 unique points." };
+    return { ok: false, error: "Come on mate! You barely stepped outside - go walk a bigger loop to claim territory." };
   }
 
   // Close the ring so first point === last point
@@ -49,19 +49,19 @@ export function buildPolygon(points: Array<[number, number]>): PolygonResult {
   try {
     poly = polygon([coords]);
   } catch {
-    return { ok: false, error: "Could not form a valid polygon from your path." };
+    return { ok: false, error: "We couldn't quite make a shape out of that one - try a rounder, more connected loop." };
   }
 
   // Reject self-intersecting paths (figure-8 loops etc.)
   if (kinks(poly).features.length > 0) {
-    return { ok: false, error: "Your path crosses itself — try a simpler loop." };
+    return { ok: false, error: "You crossed your own path! Walk a clean loop - no cutting back across yourself." };
   }
 
   const areaM2 = turfArea(poly);
   if (areaM2 < MIN_AREA_M2) {
     return {
       ok: false,
-      error: `Territory too small (${Math.round(areaM2)} m²) — walk a bigger loop.`,
+      error: "That's barely a doorstep, mate! Walk a proper block-sized loop to claim real ground.",
     };
   }
 
