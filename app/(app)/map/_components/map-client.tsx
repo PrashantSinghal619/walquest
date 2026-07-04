@@ -9,7 +9,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { MapSkeleton } from "./map-skeleton";
 import { ActiveWalkControls } from "./active-walk-controls";
 import { createClient } from "@/lib/supabase/client";
@@ -23,7 +23,7 @@ const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", feature
 
 async function fetchTerritories(): Promise<GeoJSON.FeatureCollection> {
   const res = await fetch("/api/territories", { cache: "no-store" });
-  if (!res.ok) return EMPTY_FC;
+  if (!res.ok) throw new Error(`territories fetch failed: ${res.status}`);
   return res.json();
 }
 
@@ -38,6 +38,7 @@ export function MapClient() {
     queryKey: ["territories"],
     queryFn: fetchTerritories,
     refetchInterval: 45_000,
+    placeholderData: keepPreviousData,
   });
 
   // Realtime: any territory_events INSERT → invalidate territories query

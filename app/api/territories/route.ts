@@ -8,7 +8,7 @@ export async function GET() {
 
   if (error) {
     console.error("get_territories_geojson error:", error.message);
-    return Response.json({ type: "FeatureCollection", features: [] });
+    return Response.json({ error: "Failed to load territories." }, { status: 500 });
   }
 
   return Response.json(data ?? { type: "FeatureCollection", features: [] });
