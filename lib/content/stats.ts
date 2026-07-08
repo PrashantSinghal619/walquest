@@ -19,5 +19,5 @@ export async function getLaunchTagline() {
   // Simulate a slow data source (CMS, DB, etc).
   await new Promise((resolve) => setTimeout(resolve, 50));
 
-  return "A real-time territory game for Bengaluru's walkers and runners.";
+  return "A real-time territory game for Bengaluru's walkers.";
 }
