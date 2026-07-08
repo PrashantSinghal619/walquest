@@ -24,6 +24,7 @@ SQL migrations — run in order in Supabase Dashboard -> SQL Editor:
 | `supabase/001_schema.sql` | Run | Tables, RLS, triggers, `get_territories_geojson()` |
 | `supabase/002_phase5.sql` | Run | `claim_territory()` RPC + Realtime on `territory_events` |
 | `supabase/003_leaderboard.sql` | Run | `get_leaderboard()` RPC |
+| `supabase/004_hardening.sql` | Run | Drops unguarded `insert_territory()`; `claim_territory()` recomputes area server-side, validates walk ownership, merges own overlapping territories |
 
 ## Database
 Tables: `users` (`id`, `username`, `display_name`, `created_at` — no email), `walks`, `territories` (PostGIS geometry), `territory_events`
@@ -34,7 +35,8 @@ Trigger: `on_auth_user_created` -> auto-inserts `id` into `public.users`
 `spatial_ref_sys` having RLS disabled is **expected** — PostGIS system table.
 
 RPCs:
-- `claim_territory(p_owner_id, p_walk_id, p_geom_json, p_area_m2)` -> JSON `{territory_id, clipped_count, lost_count}` — atomic conflict resolution via ST_Intersects + ST_Difference; clips other owners' territories; skips your own
+- `claim_territory(p_owner_id, p_walk_id, p_geom_json, p_area_m2)` -> JSON `{territory_id, clipped_count, lost_count, merged_count, area_m2}` — atomic conflict resolution via ST_Intersects + ST_Difference; clips other owners' territories; MERGES (ST_Union) your own overlapping ones. `p_area_m2` is ignored (area recomputed server-side from geometry), walk must be caller-owned and `in_progress`, min 500 m² enforced in SQL
+- ~~`insert_territory()`~~ — dropped in 004 (was SECURITY DEFINER with no auth check — anyone could insert territories for any owner)
 - `get_territories_geojson()` -> JSON FeatureCollection — all territories, public read
 - `get_leaderboard()` -> table rows — top 20 by total area, reads email from `auth.users` via SECURITY DEFINER
 
@@ -44,6 +46,7 @@ phase-3  MapLibre client island + OpenFreeMap tiles
 phase-4  Walk recording + territory claiming (Server Actions + PostGIS)
 phase-5  Conflict resolution + Realtime + .agents/ framework
 phase-6  Leaderboard with cacheTag/updateTag
+phase-7  Instant navigation audit (unstable_instant)
 ```
 
 ## Key architecture patterns
@@ -52,6 +55,12 @@ phase-6  Leaderboard with cacheTag/updateTag
 - **`cacheComponents: true`**: all components dynamic by default; opt-in with `'use cache'`
 - **`cacheTag` + `updateTag`**: `cacheTag('leaderboard')` inside `'use cache'` function; `updateTag('leaderboard')` in Server Actions for read-your-own-writes
 - **`'use cache'` + Supabase**: cached functions have no request context, so cannot use cookie-based `createClient()` from `lib/supabase/server`. Use plain `createClient` from `@supabase/supabase-js` for public data RPCs.
+
+### Instant navigation (`unstable_instant`)
+- **`app/(app)/layout.tsx`**: `export const unstable_instant = false` — reads cookies, too dynamic for first-entry validation; exempts the layout while still allowing sibling-navigation checks
+- **`app/(app)/map/page.tsx`**: `export const unstable_instant = { prefetch: 'static' }` — synchronous shell, no server data, passes cleanly
+- **`app/(app)/leaderboard/page.tsx`**: `export const unstable_instant = { prefetch: 'static' }` — `fetchLeaderboard` is `'use cache'`; `loading.tsx` provides Suspense fallback for cold cache
+- **DevTools**: `instantNavigationDevToolsToggle: true` in `next.config.ts` enables the "Instant Navs" panel in Next.js DevTools
 
 ### Auth
 - **Cookie-promise pattern**: `app/(app)/layout.tsx` calls `cookies()` WITHOUT await, passes Promise to `<UserMenu>` inside `<Suspense>` — nav chrome renders static, user session streams in
@@ -76,6 +85,13 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `tests/polygon.test.ts` | `buildPolygon`: valid loop, too few points, GPS jitter dedup, self-intersecting path, sub-500m² area, area proportionality |
 | `tests/proxy.test.ts` | Middleware: unauthenticated pass-through and protected-route redirects; authenticated redirects from auth pages |
 | `tests/territories-api.test.ts` | `/api/territories` route: success, RPC error (500, generic message), null fallback; `fetchTerritories` throws on non-200 |
+| `tests/walks-actions.test.ts` | Server Actions (mocked Supabase): auth guards, ownership scoping, double-claim rejection, invalid/malformed polygon rejection, RPC failure handling, cache invalidation, server-area preference |
+
+## Known operational notes
+- **Stale `.next` cache**: if routes return 404 unexpectedly (especially after major config changes), `rm -rf .next` and restart the dev server. Turbopack can generate a corrupted `routes.d.ts` that makes it lose track of compiled routes.
+- **Territory disappearance**: most likely cause is conflict resolution — `claim_territory()` clips or deletes territories belonging to other owners via `ST_Intersects + ST_Difference`. A user on a different device/account walking an overlapping loop will erase your territory. Check Supabase Dashboard -> Table Editor -> territories to confirm.
+- **Walk splitting**: when a claim cuts an opponent's territory in two, only the LARGEST surviving piece is kept (`ST_Dump ... LIMIT 1` — `geom` column is `Polygon`, not `MultiPolygon`). Smaller fragments are silently dropped; their area is included in the `clipped` event delta.
+- **Error-state walks**: `active-walk-controls.tsx` keeps the `walkId` on claim/GPS errors so the user can Keep Walking (resume) or Discard. Walks orphaned as `in_progress` before this fix may still exist in the table.
 
 ## Critical paths (review carefully before committing)
 | File | Role |
@@ -90,35 +106,56 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-### Phase 7 — Performance audit (next)
-- Apply `unstable_instant` to `/map` and `/leaderboard`
-- Fix any Suspense errors it surfaces
-- Lighthouse / Next DevTools verification
+### Phase 8 — Profile page (next)
+- `/profile` page: display name, member-since, territory count + area, walk count + distance
+- Data from cookie-based Supabase client; no caching (personal data, always fresh)
+- `unstable_instant = { prefetch: 'static' }` with Suspense wrapping all async content
+
+### Phase 9 — Territory popups
+- Click a polygon on the map to see owner name, area, and claim date
+- MapLibre click event on the territory fill layer; popup component
+- Owner name resolved via `get_territories_geojson()` owner_id lookup against `public.users`
+
+### Phase 10 — Walk history
+- List of completed walks with distance, duration, and territory outcome (claimed/clipped/lost)
+- Reuse `walks` + `territory_events` tables; no new SQL needed
+- Could live as a tab on the Profile page or its own `/walks` route
+
+### Phase 11 — PWA / install prompt
+- `manifest.json` + service worker so the app installs on Android home screen
+- Relevant since the whole point is outdoor phone use
+- `next-pwa` or manual approach via `app/manifest.ts`
 
 ## File map
 ```
+next.config.ts                              cacheComponents: true, instantNavigationDevToolsToggle: true
 proxy.ts                                    Next.js 16 middleware (auth guard + signed-in redirects)
 lib/supabase/server.ts                      createServerClient with cookie handlers
 lib/supabase/client.ts                      createBrowserClient
 lib/geo/polygon.ts                          turf: simplify -> close ring -> kinks check -> area check
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
-app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell
-app/(app)/map/page.tsx                      static Server Component, renders <MapClient />
+app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell; unstable_instant = false
+app/(app)/map/page.tsx                      static Server Component shell; unstable_instant = { prefetch: 'static' }
 app/(app)/map/_components/
   map-client.tsx                            'use client': walk state, TanStack Query, Realtime sub
   territory-map.tsx                         MapLibre init, territory fill layer, live walk-path line
   active-walk-controls.tsx                  GPS watchPosition, state machine, calls Server Actions
   map-skeleton.tsx                          CLS-safe placeholder matching map dimensions
-app/(app)/leaderboard/page.tsx              Cached leaderboard (cacheTag + cacheLife)
-app/(app)/leaderboard/loading.tsx           Pulse skeleton for cold cache
+app/(app)/leaderboard/page.tsx              Cached leaderboard (cacheTag + cacheLife); unstable_instant = { prefetch: 'static' }
+app/(app)/leaderboard/loading.tsx           Pulse skeleton for cold cache (Suspense fallback)
 app/(app)/leaderboard/_components/
   leaderboard-table.tsx                     Rank medals, walker name, territory count, km²
+app/auth/login/page.tsx                     Magic link form; flash messages in Suspense (searchParams dynamic)
+app/auth/callback/route.ts                  PKCE code exchange; redirects to /map or error message
+app/auth/actions.ts                         signIn / signOut Server Actions
 supabase/001_schema.sql                     Tables, RLS, trigger, helper RPCs
 supabase/002_phase5.sql                     claim_territory() + Realtime setup
 supabase/003_leaderboard.sql                get_leaderboard() RPC
-tests/polygon.test.ts                       buildPolygon unit tests
+supabase/004_hardening.sql                  drop insert_territory; hardened claim_territory (server area, walk check, self-merge)
+tests/polygon.test.ts                       buildPolygon unit tests (incl. malformed-payload rejection)
 tests/proxy.test.ts                         middleware redirect unit tests
 tests/territories-api.test.ts              API route + fetchTerritories error handling tests
+tests/walks-actions.test.ts                 Server Action guards, claim flow, cache invalidation (mocked Supabase)
 vitest.config.ts                            Vitest config (node env, @ alias)
 ```

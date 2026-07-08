@@ -9,7 +9,14 @@ export type StartWalkResult =
   | { ok: false; error: string };
 
 export type CompleteWalkResult =
-  | { ok: true; territoryId: string; areaM2: number; clippedCount: number; lostCount: number }
+  | {
+      ok: true;
+      territoryId: string;
+      areaM2: number;
+      clippedCount: number;
+      lostCount: number;
+      mergedCount: number;
+    }
   | { ok: false; error: string };
 
 export async function startWalk(): Promise<StartWalkResult> {
@@ -104,8 +111,19 @@ export async function completeWalk(
     return { ok: false, error: "Failed to save territory. Try again." };
   }
 
-  const { territory_id: territoryId, clipped_count: clippedCount, lost_count: lostCount } =
-    claimResult as { territory_id: string; clipped_count: number; lost_count: number };
+  const {
+    territory_id: territoryId,
+    clipped_count: clippedCount,
+    lost_count: lostCount,
+    merged_count: mergedCount = 0,
+    area_m2: serverAreaM2,
+  } = claimResult as {
+    territory_id: string;
+    clipped_count: number;
+    lost_count: number;
+    merged_count?: number;
+    area_m2?: number;
+  };
 
   // Persist path + mark complete
   await supabase
@@ -120,5 +138,14 @@ export async function completeWalk(
   revalidatePath("/map");
   updateTag("leaderboard");
 
-  return { ok: true, territoryId, areaM2, clippedCount, lostCount };
+  // Prefer the server-computed area: after a self-overlap merge the RPC's
+  // number is the true territory size, not the raw walked loop's.
+  return {
+    ok: true,
+    territoryId,
+    areaM2: serverAreaM2 ?? areaM2,
+    clippedCount,
+    lostCount,
+    mergedCount,
+  };
 }

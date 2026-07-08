@@ -16,8 +16,16 @@ type WalkState =
   | { phase: "starting" }
   | { phase: "tracking"; walkId: string }
   | { phase: "claiming"; walkId: string }
-  | { phase: "success"; areaM2: number; clippedCount: number; lostCount: number }
-  | { phase: "error"; message: string };
+  | {
+      phase: "success";
+      areaM2: number;
+      clippedCount: number;
+      lostCount: number;
+      mergedCount: number;
+    }
+  // walkId is kept on errors so the walk can be resumed or explicitly
+  // discarded - otherwise the row is orphaned as 'in_progress' forever.
+  | { phase: "error"; message: string; walkId: string | null };
 
 export function ActiveWalkControls({
   onPointsUpdate,
@@ -46,9 +54,24 @@ export function ActiveWalkControls({
     }
   }
 
+  function toError(message: string) {
+    // Preserve the walkId from whatever phase we were in so the user can
+    // resume or discard - never silently orphan an in_progress walk.
+    setState((prev) => ({
+      phase: "error",
+      message,
+      walkId:
+        prev.phase === "tracking" || prev.phase === "claiming"
+          ? prev.walkId
+          : prev.phase === "error"
+            ? prev.walkId
+            : null,
+    }));
+  }
+
   function startGps() {
     if (!("geolocation" in navigator)) {
-      setState({ phase: "error", message: "No GPS here! Pull this up on your phone to start tracking your walk." });
+      toError("No GPS here! Pull this up on your phone to start tracking your walk.");
       return;
     }
 
@@ -65,7 +88,7 @@ export function ActiveWalkControls({
           2: "Satellites lost you! Head somewhere open - away from walls and under the sky.",
           3: "Satellites are being shy. Step outside somewhere open and try again.",
         };
-        setState({ phase: "error", message: gpsMessages[err.code] ?? "GPS went quiet on us. Give it a moment and try again." });
+        toError(gpsMessages[err.code] ?? "GPS went quiet on us. Give it a moment and try again.");
         stopGps();
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -79,11 +102,18 @@ export function ActiveWalkControls({
 
     const result = await startWalk();
     if (!result.ok) {
-      setState({ phase: "error", message: result.error });
+      setState({ phase: "error", message: result.error, walkId: null });
       return;
     }
 
     setState({ phase: "tracking", walkId: result.walkId });
+    startGps();
+  }
+
+  function handleResume(walkId: string) {
+    // Back to tracking with the same walk and accumulated points - the user
+    // can keep walking, claim again, or discard.
+    setState({ phase: "tracking", walkId });
     startGps();
   }
 
@@ -96,7 +126,7 @@ export function ActiveWalkControls({
     startTransition(async () => {
       const result = await completeWalk(walkId, points);
       if (!result.ok) {
-        setState({ phase: "error", message: result.error });
+        setState({ phase: "error", message: result.error, walkId });
         return;
       }
 
@@ -105,6 +135,7 @@ export function ActiveWalkControls({
         areaM2: result.areaM2,
         clippedCount: result.clippedCount,
         lostCount: result.lostCount,
+        mergedCount: result.mergedCount,
       });
       onClaimSuccess();
 
@@ -117,9 +148,7 @@ export function ActiveWalkControls({
     });
   }
 
-  async function handleDiscard() {
-    if (state.phase !== "tracking") return;
-    const { walkId } = state;
+  async function handleDiscard(walkId: string) {
     stopGps();
     setPoints([]);
     onPointsUpdate([]);
@@ -162,7 +191,7 @@ export function ActiveWalkControls({
               </Button>
               <Button
                 variant="outline"
-                onClick={handleDiscard}
+                onClick={() => handleDiscard(state.walkId)}
                 aria-label="Discard walk"
               >
                 ✕
@@ -183,11 +212,12 @@ export function ActiveWalkControls({
                 {(state.areaM2 / 1_000_000).toFixed(4)} km²
               </span>
             </p>
-            {(state.clippedCount > 0 || state.lostCount > 0) && (
+            {(state.clippedCount > 0 || state.lostCount > 0 || state.mergedCount > 0) && (
               <p className="text-xs text-muted-foreground">
                 {[
                   state.clippedCount > 0 && `clipped ${state.clippedCount}`,
                   state.lostCount > 0 && `erased ${state.lostCount}`,
+                  state.mergedCount > 0 && `merged ${state.mergedCount} of yours`,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -199,9 +229,22 @@ export function ActiveWalkControls({
         {state.phase === "error" && (
           <>
             <p className="text-sm text-destructive text-center">{state.message}</p>
-            <Button variant="outline" onClick={() => setState({ phase: "idle" })} className="w-full">
-              Try Again
-            </Button>
+            {state.walkId ? (
+              // The walk still exists server-side - let the user carry on or
+              // explicitly discard, never silently orphan it.
+              <div className="flex gap-2 w-full">
+                <Button onClick={() => handleResume(state.walkId!)} className="flex-1">
+                  Keep Walking
+                </Button>
+                <Button variant="outline" onClick={() => handleDiscard(state.walkId!)}>
+                  Discard
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={() => setState({ phase: "idle" })} className="w-full">
+                Try Again
+              </Button>
+            )}
           </>
         )}
       </div>

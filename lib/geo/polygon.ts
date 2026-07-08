@@ -16,6 +16,25 @@ export type PolygonResult =
  * convention, NOT the Geolocation API order.
  */
 export function buildPolygon(points: Array<[number, number]>): PolygonResult {
+  // Server Action boundary: points arrive as untrusted client JSON. Reject
+  // anything that isn't a finite [lng, lat] pair before it reaches turf,
+  // which throws opaque errors on malformed input.
+  const isValidPoint = (p: unknown): p is [number, number] =>
+    Array.isArray(p) &&
+    p.length === 2 &&
+    typeof p[0] === "number" &&
+    typeof p[1] === "number" &&
+    Number.isFinite(p[0]) &&
+    Number.isFinite(p[1]) &&
+    p[0] >= -180 &&
+    p[0] <= 180 &&
+    p[1] >= -90 &&
+    p[1] <= 90;
+
+  if (!Array.isArray(points) || !points.every(isValidPoint)) {
+    return { ok: false, error: "Those coordinates look scrambled - try recording your walk again." };
+  }
+
   if (points.length < 3) {
     return { ok: false, error: "Not so fast! Walk around a bit more before you can stake your claim." };
   }

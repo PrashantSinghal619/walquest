@@ -4,9 +4,10 @@
 Vitest is set up and running. `npm test` runs all tests; `npm run test:watch` for watch mode.
 
 Existing test files:
-- `tests/polygon.test.ts` — `buildPolygon` unit tests (6 tests)
+- `tests/polygon.test.ts` — `buildPolygon` unit tests incl. malformed-payload rejection (9 tests)
 - `tests/proxy.test.ts` — middleware redirect logic (10 tests)
 - `tests/territories-api.test.ts` — `/api/territories` route + `fetchTerritories` error handling (6 tests)
+- `tests/walks-actions.test.ts` — Server Actions with mocked Supabase: auth guards, ownership scoping, double-claim rejection, RPC failure, cache invalidation (13 tests)
 
 ## Guiding principle
 GPS cannot be simulated in unit tests. Focus integration-test effort on business logic (polygon math, territory claims) and use E2E only for the authenticated walk flow.
@@ -34,7 +35,7 @@ Already covered. Cases: RPC success, RPC error (500 + generic message, no raw DB
 Already covered. Assert that non-200 responses throw (so TanStack Query classifies as error, not empty success).
 
 ### Integration — `app/actions/walks.ts`
-Not yet written. Run against a real Supabase test project (never mock PostGIS):
+Mocked-client coverage exists (`tests/walks-actions.test.ts`): guards, ownership, error paths, cache invalidation. What still needs a REAL Supabase test project (never mock PostGIS):
 - `startWalk`: inserts walk row, returns UUID
 - `completeWalk`: happy path -> territory row exists with correct owner + geom + `territory_events` row
 - `completeWalk`: conflict resolution -> other owner's territory clipped/deleted correctly

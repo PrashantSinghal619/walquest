@@ -22,6 +22,27 @@ Rules:
 - `updateTag('tag')` — call from a **Server Action** to invalidate + enable read-your-own-writes (the action sees fresh data immediately)
 - `revalidateTag('tag')` — purges cache for next request; usable outside Server Actions
 
+## `unstable_instant` — instant navigation validation
+
+Export from page and layout files to validate that navigations produce an instant static shell. Validation runs in dev and at build time.
+
+```typescript
+// Page that should navigate instantly — no uncached server awaits at top level
+export const unstable_instant = { prefetch: 'static' }
+
+// Layout that is too dynamic for first-entry validation (reads cookies, etc.)
+// Still allows sibling-navigation validation via page-level exports within this layout
+export const unstable_instant = false
+```
+
+Rules:
+- Add `unstable_instant = { prefetch: 'static' }` to any page that should be an instant navigation target
+- Uncached data fetches (`await fetchSomething()` without `'use cache'`) must be inside `<Suspense>` OR the page is already `'use cache'`
+- `loading.tsx` creates an implicit Suspense boundary — sufficient for cold-cache suspension of a `'use cache'` page function
+- Layouts that call dynamic APIs (e.g. `cookies()`) should export `unstable_instant = false` so validation doesn't fail first-entry checks while still validating sibling navigations
+
+Guide: `node_modules/next/dist/docs/01-app/02-guides/instant-navigation.md`
+
 ## `'use cache'` + Supabase
 
 Cached functions run outside request context — they cannot access cookies. This means `createClient()` from `lib/supabase/server` will fail inside `'use cache'` functions.
@@ -77,6 +98,10 @@ SELECT split_part(au.email, '@', 1) as display_name
 FROM auth.users au
 JOIN public.territories t ON t.owner_id = au.id
 ```
+
+## Turbopack `.next` cache
+
+Turbopack can generate a corrupted `.next/dev/types/routes.d.ts` after config changes, causing routes to 404 even though their `page.tsx` files exist. If you see unexpected 404s on routes that clearly have page files, `rm -rf .next` and restart the dev server.
 
 ## Pre-commit guardrails
 

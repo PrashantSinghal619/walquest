@@ -15,6 +15,8 @@ Every function in `app/actions/walks.ts` must call `supabase.auth.getUser()` and
 - Reading territories: `get_territories_geojson()` RPC (ST_AsGeoJSON in Postgres) — NOT raw PostgREST geometry serialisation
 - Reading leaderboard: `get_leaderboard()` RPC — NOT direct table join (needs `auth.users` access)
 - **Check**: any direct `.from('territories').insert()` call is a BLOCKER
+- **Check**: SECURITY DEFINER RPCs must verify `auth.uid()` against any owner/actor parameter and must NOT trust client-supplied derived values (areas, counts) — recompute from geometry in SQL. `insert_territory()` was dropped in 004 for exactly this
+- Self-overlap: `claim_territory` MERGES the caller's own overlapping territories (ST_Union) — new code must not reintroduce coexisting overlapping polygons per owner (double-counts leaderboard area)
 
 ## Cache invalidation (Next.js 16)
 - After mutations in `completeWalk`: both `revalidatePath('/map')` and `updateTag('leaderboard')` must be called

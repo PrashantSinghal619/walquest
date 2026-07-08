@@ -15,7 +15,7 @@ const mockCreateClient = vi.mocked(createClient);
 function mockRpc(data: unknown, error: { message: string } | null) {
   mockCreateClient.mockResolvedValue({
     rpc: vi.fn().mockResolvedValue({ data, error }),
-  } as ReturnType<typeof createClient> extends Promise<infer T> ? T : never);
+  } as unknown as Awaited<ReturnType<typeof createClient>>);
 }
 
 describe("GET /api/territories", () => {
