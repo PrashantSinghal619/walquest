@@ -8,11 +8,12 @@
 //   • Walk state shared between TerritoryMap and ActiveWalkControls
 
 import dynamic from "next/dynamic";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { MapSkeleton } from "./map-skeleton";
 import { ActiveWalkControls } from "./active-walk-controls";
 import { createClient } from "@/lib/supabase/client";
+import { computeFocusTarget, type FocusTarget } from "@/lib/geo/focus";
 
 const TerritoryMap = dynamic(() => import("./territory-map"), {
   ssr: false,
@@ -34,12 +35,57 @@ export function MapClient() {
   const queryClient = useQueryClient();
 
   // Territories with 45-second polling fallback
-  const { data: geojson = EMPTY_FC } = useQuery({
+  const { data: geojson = EMPTY_FC, isSuccess: territoriesLoaded } = useQuery({
     queryKey: ["territories"],
     queryFn: fetchTerritories,
     refetchInterval: 45_000,
     placeholderData: keepPreviousData,
   });
+
+  // ── Initial focus: my territories + my current location ────────────────────
+  // Three inputs race on load: the session (who am I), the territories fetch,
+  // and a GPS fix. GPS is the slow one, so it gets a hard 2.5 s timeout - the
+  // map must settle on its target within ~3 s even when GPS is denied or slow.
+
+  // Who is signed in (read from the local session - no network round-trip)
+  const [auth, setAuth] = useState<{ userId: string | null } | null>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setAuth({ userId: data.session?.user.id ?? null }));
+  }, []);
+
+  // One-shot GPS fix on load. maximumAge accepts a recent cached fix so this
+  // usually resolves instantly; the timeout caps the wait when it can't.
+  const [initialFix, setInitialFix] = useState<[number, number] | null>(null);
+  const [gpsSettled, setGpsSettled] = useState(false);
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
+      setGpsSettled(true);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const fix: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+        setInitialFix(fix);
+        setCurrentPosition(fix); // show the GPS dot immediately, not just on walks
+        setGpsSettled(true);
+      },
+      () => setGpsSettled(true), // denied/unavailable - focus on territories alone
+      { enableHighAccuracy: false, timeout: 2500, maximumAge: 60_000 }
+    );
+  }, []);
+
+  // Once all three inputs settle, compute the focus exactly once. Later
+  // refetches and walk updates must not yank the camera around.
+  const didFocusRef = useRef(false);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  useEffect(() => {
+    if (didFocusRef.current || !gpsSettled || !territoriesLoaded || auth === null) return;
+    didFocusRef.current = true;
+    setFocusTarget(computeFocusTarget(geojson, auth.userId, initialFix));
+  }, [gpsSettled, territoriesLoaded, auth, geojson, initialFix]);
 
   // Realtime: any territory_events INSERT → invalidate territories query
   useEffect(() => {
@@ -73,6 +119,7 @@ export function MapClient() {
         walkPoints={walkPoints}
         currentPosition={currentPosition}
         geojson={geojson}
+        focusTarget={focusTarget}
       />
       <ActiveWalkControls
         onPointsUpdate={setWalkPoints}

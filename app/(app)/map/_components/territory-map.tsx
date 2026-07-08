@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type { FocusTarget } from "@/lib/geo/focus";
 
 const BENGALURU: [number, number] = [77.5946, 12.9716];
 const OFMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -18,17 +19,55 @@ interface TerritoryMapProps {
   walkPoints: Array<[number, number]>; // [lng, lat] - GeoJSON order
   currentPosition: [number, number] | null;
   geojson: GeoJSON.FeatureCollection;  // managed by TanStack Query in MapClient
+  focusTarget: FocusTarget | null;     // initial camera target, applied once
 }
 
 export default function TerritoryMap({
   walkPoints,
   currentPosition,
   geojson,
+  focusTarget,
 }: TerritoryMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<maplibregl.Map | null>(null);
   const markerRef    = useRef<maplibregl.Marker | null>(null);
   const mapReadyRef  = useRef(false); // true once map 'load' has fired
+  const focusDoneRef = useRef(false); // the initial focus fires exactly once
+
+  // Latest props, readable from the 'load' handler: data can arrive before
+  // the map finishes loading, and the prop effects below skip until it's
+  // ready. The load handler applies whatever is current at that moment.
+  const geojsonRef  = useRef(geojson);
+  const positionRef = useRef(currentPosition);
+  const focusRef    = useRef(focusTarget);
+  geojsonRef.current  = geojson;
+  positionRef.current = currentPosition;
+  focusRef.current    = focusTarget;
+
+  function applyFocus(map: maplibregl.Map) {
+    const target = focusRef.current;
+    if (!target || focusDoneRef.current) return;
+    focusDoneRef.current = true;
+    if (target.kind === "bounds") {
+      map.fitBounds(target.bounds, { padding: 60, maxZoom: 16, duration: 800 });
+    } else {
+      map.flyTo({ center: target.center, zoom: 15, duration: 800 });
+    }
+  }
+
+  // Safe at any time: no-op until the marker exists (it is created in the
+  // 'load' handler, so a non-null marker implies the map is ready).
+  function applyPosition() {
+    const marker = markerRef.current;
+    if (!marker) return;
+    const position = positionRef.current;
+    if (!position) {
+      marker.getElement().style.display = "none";
+      return;
+    }
+    marker.setLngLat(position);
+    marker.getElement().style.display = "block";
+  }
 
   // ── Init: create map, add sources + layers ──────────────────────────────────
   useEffect(() => {
@@ -92,6 +131,12 @@ export default function TerritoryMap({
       markerRef.current.getElement().style.display = "none";
 
       mapReadyRef.current = true;
+
+      // Apply whatever arrived while the style was still loading - without
+      // this, early data waits for the next prop change (up to a 45 s poll).
+      (map.getSource("territories") as maplibregl.GeoJSONSource).setData(geojsonRef.current);
+      applyPosition();
+      applyFocus(map);
     });
 
     mapRef.current = map;
@@ -114,6 +159,13 @@ export default function TerritoryMap({
     const source = mapRef.current.getSource("territories") as maplibregl.GeoJSONSource | undefined;
     source?.setData(geojson);
   }, [geojson]);
+
+  // ── One-time initial focus once both the map and the target are ready ──────
+  useEffect(() => {
+    if (!mapRef.current || !mapReadyRef.current) return;
+    applyFocus(mapRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTarget]);
 
   // ── Update walk-path source as GPS points accumulate ───────────────────────
   useEffect(() => {
@@ -141,21 +193,15 @@ export default function TerritoryMap({
   }, [walkPoints]);
 
   // ── Move GPS marker when position updates ──────────────────────────────────
+  // If the marker doesn't exist yet (map still loading), this no-ops and the
+  // 'load' handler applies the pending position instead.
   useEffect(() => {
-    const marker = markerRef.current;
-    if (!marker) return;
+    applyPosition();
 
-    if (!currentPosition) {
-      marker.getElement().style.display = "none";
-      return;
-    }
-
-    marker.setLngLat(currentPosition);
-    marker.getElement().style.display = "block";
-
-    if (mapRef.current && walkPoints.length === 1) {
+    if (mapRef.current && mapReadyRef.current && currentPosition && walkPoints.length === 1) {
       mapRef.current.panTo(currentPosition, { duration: 500 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPosition, walkPoints.length]);
 
   return <div ref={containerRef} className="flex-1 w-full" />;
