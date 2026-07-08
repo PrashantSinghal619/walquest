@@ -1,3 +1,5 @@
+export const unstable_instant = { prefetch: "static" };
+
 import { cacheTag, cacheLife } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { LeaderboardTable } from "./_components/leaderboard-table";

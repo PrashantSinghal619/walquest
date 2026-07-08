@@ -23,6 +23,8 @@ import { Providers } from "./providers";
 // The alternative - awaiting cookies() here - would block the entire layout
 // render until the cookie store is ready, delaying even the logo.
 
+export const unstable_instant = false;
+
 export default function AppLayout({
   children,
 }: {
