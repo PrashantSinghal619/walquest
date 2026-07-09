@@ -56,8 +56,13 @@ export function MapClient() {
       .then(({ data }) => setAuth({ userId: data.session?.user.id ?? null }));
   }, []);
 
-  // One-shot GPS fix on load. maximumAge accepts a recent cached fix so this
-  // usually resolves instantly; the timeout caps the wait when it can't.
+  // GPS fix on load. Two separate concerns with different deadlines:
+  //   - the CAMERA FOCUS decision must settle fast (own 2.5 s timer below),
+  //     with or without a fix - the map cannot wait on slow GPS
+  //   - the GPS DOT has no deadline: a watch keeps trying until the first
+  //     fix lands (cold GPS or a slow permission prompt regularly take
+  //     >2.5 s), then unsubscribes. A one-shot bounded attempt here used
+  //     to leave the dot missing for the whole session when GPS was slow.
   const [initialFix, setInitialFix] = useState<[number, number] | null>(null);
   const [gpsSettled, setGpsSettled] = useState(false);
   useEffect(() => {
@@ -65,16 +70,39 @@ export function MapClient() {
       setGpsSettled(true);
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+
+    // Focus budget: proceed without a fix after 2.5 s. Deliberately our own
+    // timer - on iOS Safari/Firefox the geolocation `timeout` clock also
+    // runs while the permission prompt is open, so it can't be trusted to
+    // mean "no fix available".
+    const focusDeadline = setTimeout(() => setGpsSettled(true), 2500);
+
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const fix: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setInitialFix(fix);
-        setCurrentPosition(fix); // show the GPS dot immediately, not just on walks
+        setCurrentPosition(fix); // show the GPS dot whenever the fix arrives
         setGpsSettled(true);
+        clearTimeout(focusDeadline);
+        // First fix is all we need while idle - walks run their own watch
+        navigator.geolocation.clearWatch(watchId);
       },
-      () => setGpsSettled(true), // denied/unavailable - focus on territories alone
-      { enableHighAccuracy: false, timeout: 2500, maximumAge: 60_000 }
+      (err) => {
+        // Denied is final - stop waiting. TIMEOUT / POSITION_UNAVAILABLE
+        // are transient: the watch stays alive and may still deliver.
+        if (err.code === 1) {
+          setGpsSettled(true);
+          clearTimeout(focusDeadline);
+          navigator.geolocation.clearWatch(watchId);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 }
     );
+
+    return () => {
+      clearTimeout(focusDeadline);
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   // Once all three inputs settle, compute the focus exactly once. Later
