@@ -41,9 +41,11 @@ class LocateControl implements maplibregl.IControl {
     this.button.type = "button";
     this.button.title = "Focus on my location";
     this.button.setAttribute("aria-label", "Focus on my location");
-    // Crosshair icon, currentColor so it follows the ctrl theme
+    // Crosshair in #333 - the same colour maplibre hard-codes in its own
+    // control icons (the ctrl buttons stay white in both app themes, so
+    // currentColor would go near-invisible in dark mode)
     this.button.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block;margin:auto">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" style="display:block;margin:auto">' +
       '<circle cx="12" cy="12" r="3.5"/>' +
       '<path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg>';
     this.button.onclick = this.onClick;
