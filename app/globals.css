@@ -182,8 +182,13 @@
   }
 }
 
-/* MapLibre popup - follow the app theme instead of the library's white */
-.maplibregl-popup-content {
+/* MapLibre popup - follow the app theme instead of the library's white.
+   maplibre-gl.css is injected with the lazily-loaded map chunk, i.e. AFTER
+   this file, so equal-specificity overrides lose the cascade (symptom:
+   white popup with theme-coloured, near-invisible text in dark mode).
+   Every selector here carries an extra class so specificity wins
+   regardless of stylesheet order. */
+.maplibregl-popup .maplibregl-popup-content {
   background: var(--popover);
   color: var(--popover-foreground);
   border: 1px solid var(--border);
@@ -191,19 +196,19 @@
   padding: 0.75rem 1rem;
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 }
-.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
   border-top-color: var(--popover);
 }
-.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
   border-bottom-color: var(--popover);
 }
-.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
   border-right-color: var(--popover);
 }
-.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: var(--popover);
 }
-.maplibregl-popup-close-button {
+.maplibregl-popup .maplibregl-popup-close-button {
   color: var(--muted-foreground);
   font-size: 1.1rem;
   padding: 0 0.4rem;
