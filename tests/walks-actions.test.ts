@@ -255,10 +255,18 @@ describe("completeWalk", () => {
       expect.objectContaining({ p_owner_id: USER_ID, p_walk_id: WALK_ID })
     );
 
-    // Walk marked completed with the recorded path
+    // Walk marked completed with the recorded path and walked distance
     expect(walkUpdate.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "completed", path: VALID_LOOP })
+      expect.objectContaining({
+        status: "completed",
+        path: VALID_LOOP,
+        distance_m: expect.any(Number),
+      })
     );
+    const updatePayload = walkUpdate.update.mock.calls[0][0] as { distance_m: number };
+    // ~1.1 km per side, 3 sides traced (the loop closes server-side)
+    expect(updatePayload.distance_m).toBeGreaterThan(3000);
+    expect(updatePayload.distance_m).toBeLessThan(4000);
 
     // Read-your-own-writes cache invalidation
     expect(revalidatePath).toHaveBeenCalledWith("/map");

@@ -26,6 +26,7 @@ SQL migrations — run in order in Supabase Dashboard -> SQL Editor:
 | `supabase/003_leaderboard.sql` | Run | `get_leaderboard()` RPC |
 | `supabase/004_hardening.sql` | Run | Drops unguarded `insert_territory()`; `claim_territory()` recomputes area server-side, validates walk ownership, merges own overlapping territories |
 | `supabase/005_popups.sql` | Run | Adds `owner_name` (email prefix via `auth.users`) to `get_territories_geojson()` properties for map popups |
+| `supabase/006_walk_distance.sql` | **NOT RUN YET** | One-time backfill of `walks.distance_m` from stored GPS paths (completeWalk only started storing it in phase 10) |
 
 ## Database
 Tables: `users` (`id`, `username`, `display_name`, `created_at` — no email), `walks`, `territories` (PostGIS geometry), `territory_events`
@@ -88,7 +89,7 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `tests/territories-api.test.ts` | `/api/territories` route: success, RPC error (500, generic message), null fallback; `fetchTerritories` throws on non-200 |
 | `tests/walks-actions.test.ts` | Server Actions (mocked Supabase): auth guards, ownership scoping, double-claim rejection, invalid/malformed polygon rejection, RPC failure handling, cache invalidation, server-area preference |
 | `tests/focus.test.ts` | `computeFocusTarget`: combined bounds, territory-only, fix-only, rival territories ignored, multi-territory span, non-Polygon safety |
-| `tests/format.test.ts` | `formatAreaM2` (m²/km² threshold, grouping), `formatClaimDate` (en-IN, garbage input) |
+| `tests/format.test.ts` | `formatAreaM2`, `formatClaimDate`, `formatDistanceM` (m/km), `formatDuration` (min, h+min, invalid) |
 
 ## Known operational notes
 - **Stale `.next` cache**: if routes return 404 unexpectedly (especially after major config changes), `rm -rf .next` and restart the dev server. Turbopack can generate a corrupted `routes.d.ts` that makes it lose track of compiled routes.
@@ -109,12 +110,7 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-### Phase 10 — Walk history (next)
-- List of completed walks with distance, duration, and territory outcome (claimed/clipped/lost)
-- Reuse `walks` + `territory_events` tables; no new SQL needed
-- Could live as a tab on the Profile page or its own `/walks` route
-
-### Phase 11 — PWA / install prompt
+### Phase 11 — PWA / install prompt (next)
 - `manifest.json` + service worker so the app installs on Android home screen
 - Relevant since the whole point is outdoor phone use
 - `next-pwa` or manual approach via `app/manifest.ts`
@@ -152,6 +148,7 @@ supabase/002_phase5.sql                     claim_territory() + Realtime setup
 supabase/003_leaderboard.sql                get_leaderboard() RPC
 supabase/004_hardening.sql                  drop insert_territory; hardened claim_territory (server area, walk check, self-merge)
 supabase/005_popups.sql                     get_territories_geojson + owner_name for popups
+supabase/006_walk_distance.sql              one-time distance_m backfill from stored paths
 tests/polygon.test.ts                       buildPolygon unit tests (incl. malformed-payload rejection)
 tests/focus.test.ts                         computeFocusTarget unit tests
 tests/format.test.ts                        formatAreaM2 / formatClaimDate unit tests

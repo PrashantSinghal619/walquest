@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { lineString, length as turfLength } from "@turf/turf";
 import { createClient } from "@/lib/supabase/server";
 import { buildPolygon } from "@/lib/geo/polygon";
 
@@ -125,6 +126,13 @@ export async function completeWalk(
     area_m2?: number;
   };
 
+  // Walked distance along the recorded trace (raw points, not the
+  // simplified polygon) - feeds the profile stats and walk history
+  const distanceM =
+    points.length >= 2
+      ? turfLength(lineString(points), { units: "kilometers" }) * 1000
+      : 0;
+
   // Persist path + mark complete
   await supabase
     .from("walks")
@@ -132,6 +140,7 @@ export async function completeWalk(
       status: "completed",
       ended_at: new Date().toISOString(),
       path: points,
+      distance_m: distanceM,
     })
     .eq("id", walkId);
 

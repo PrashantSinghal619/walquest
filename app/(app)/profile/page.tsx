@@ -1,7 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatAreaM2, formatClaimDate } from "@/lib/format";
+import {
+  formatAreaM2,
+  formatClaimDate,
+  formatDistanceM,
+  formatDuration,
+} from "@/lib/format";
 
 export const unstable_instant = { prefetch: "static" };
 
@@ -37,16 +42,34 @@ async function ProfileContent() {
       .order("claimed_at", { ascending: false }),
     supabase
       .from("walks")
-      .select("distance_m")
+      .select("id, status, started_at, ended_at, distance_m")
       .eq("user_id", user.id)
-      .eq("status", "completed"),
+      .order("started_at", { ascending: false }),
   ]);
 
   const territories = territoriesResult.data ?? [];
-  const walks = walksResult.data ?? [];
+  const allWalks = walksResult.data ?? [];
+  const completedWalks = allWalks.filter((w) => w.status === "completed");
+  const recentWalks = allWalks.slice(0, 10);
+
+  // Outcomes for the history list: what each walk's claim did
+  const { data: eventsData } = recentWalks.length
+    ? await supabase
+        .from("territory_events")
+        .select("walk_id, type, area_delta_m2")
+        .in("walk_id", recentWalks.map((w) => w.id))
+        .eq("actor_id", user.id)
+    : { data: [] };
+  const eventsByWalk = new Map<string, Array<{ type: string; area_delta_m2: number }>>();
+  for (const e of eventsData ?? []) {
+    if (!e.walk_id) continue;
+    const list = eventsByWalk.get(e.walk_id) ?? [];
+    list.push(e);
+    eventsByWalk.set(e.walk_id, list);
+  }
 
   const totalAreaM2 = territories.reduce((sum, t) => sum + t.area_m2, 0);
-  const totalDistanceM = walks.reduce((sum, w) => sum + (w.distance_m ?? 0), 0);
+  const totalDistanceM = completedWalks.reduce((sum, w) => sum + (w.distance_m ?? 0), 0);
   const displayName = user.email?.split("@")[0] ?? "Walker";
 
   return (
@@ -70,7 +93,7 @@ async function ProfileContent() {
           value={territories.length.toString()}
         />
         <StatCard label="Area claimed" value={formatAreaM2(totalAreaM2)} />
-        <StatCard label="Walks" value={walks.length.toString()} />
+        <StatCard label="Walks" value={completedWalks.length.toString()} />
         <StatCard
           label="Distance"
           value={
@@ -111,6 +134,70 @@ async function ProfileContent() {
           </div>
         )}
       </div>
+
+      {/* Walk history */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          Recent walks
+        </h2>
+        {recentWalks.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No walks yet - your history starts with your first loop!
+          </p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border">
+            {recentWalks.map((w) => (
+              <div
+                key={w.id}
+                className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">{formatClaimDate(w.started_at)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDuration(w.started_at, w.ended_at)}
+                    {w.distance_m != null && ` · ${formatDistanceM(w.distance_m)}`}
+                  </p>
+                </div>
+                <WalkOutcome
+                  status={w.status}
+                  events={eventsByWalk.get(w.id) ?? []}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WalkOutcome({
+  status,
+  events,
+}: {
+  status: string;
+  events: Array<{ type: string; area_delta_m2: number }>;
+}) {
+  if (status === "discarded") {
+    return <span className="text-xs text-muted-foreground shrink-0">discarded</span>;
+  }
+  if (status === "in_progress") {
+    return <span className="text-xs text-amber-600 dark:text-amber-500 shrink-0">in progress</span>;
+  }
+
+  const claimed = events.find((e) => e.type === "claimed");
+  const rivalsHit = events.filter((e) => e.type === "clipped" || e.type === "lost").length;
+
+  return (
+    <div className="text-right shrink-0">
+      <p className="text-xs font-medium">
+        {claimed ? `claimed ${formatAreaM2(claimed.area_delta_m2)}` : "completed"}
+      </p>
+      {rivalsHit > 0 && (
+        <p className="text-xs text-muted-foreground">
+          clipped {rivalsHit} rival{rivalsHit > 1 ? "s" : ""}
+        </p>
+      )}
     </div>
   );
 }

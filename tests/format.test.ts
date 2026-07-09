@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatAreaM2, formatClaimDate } from "../lib/format";
+import {
+  formatAreaM2,
+  formatClaimDate,
+  formatDistanceM,
+  formatDuration,
+} from "../lib/format";
 
 describe("formatAreaM2", () => {
   it("formats small areas as whole m² with grouping", () => {
@@ -18,6 +23,40 @@ describe("formatAreaM2", () => {
 
   it("handles zero", () => {
     expect(formatAreaM2(0)).toBe("0 m²");
+  });
+});
+
+describe("formatDistanceM", () => {
+  it("formats short distances in metres", () => {
+    expect(formatDistanceM(0)).toBe("0 m");
+    expect(formatDistanceM(842.6)).toBe("843 m");
+  });
+
+  it("switches to km at 1000 m with one decimal", () => {
+    expect(formatDistanceM(1000)).toBe("1.0 km");
+    expect(formatDistanceM(2345)).toBe("2.3 km");
+  });
+});
+
+describe("formatDuration", () => {
+  const start = "2026-07-09T10:00:00Z";
+
+  it("formats minutes", () => {
+    expect(formatDuration(start, "2026-07-09T10:42:00Z")).toBe("42 min");
+  });
+
+  it("formats hours + zero-padded minutes", () => {
+    expect(formatDuration(start, "2026-07-09T11:05:00Z")).toBe("1 h 05 min");
+  });
+
+  it("handles sub-minute walks", () => {
+    expect(formatDuration(start, "2026-07-09T10:00:20Z")).toBe("<1 min");
+  });
+
+  it("returns a dash for missing or invalid end times", () => {
+    expect(formatDuration(start, null)).toBe("—");
+    expect(formatDuration(start, "garbage")).toBe("—");
+    expect(formatDuration(start, "2026-07-09T09:00:00Z")).toBe("—"); // ends before start
   });
 });
 
