@@ -13,7 +13,7 @@ Real-time territory-conquest walking tracker for Bengaluru. Users walk a loop, c
 - **Vitest** — unit and integration tests (`npm test`)
 
 ## Deployment
-Live at **https://walquest.vercel.app**. Env vars set in Vercel dashboard. Any push to `master` auto-deploys.
+Live at **https://walquest.vercel.app**. Env vars set in Vercel dashboard. NO git remote is configured — deploy with `npx vercel --prod` (project linked via `.vercel/project.json`).
 
 ## Supabase setup
 Credentials live in `.env.local` (gitignored). Key env var name is `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (not ANON_KEY — Supabase renamed it).
@@ -25,6 +25,7 @@ SQL migrations — run in order in Supabase Dashboard -> SQL Editor:
 | `supabase/002_phase5.sql` | Run | `claim_territory()` RPC + Realtime on `territory_events` |
 | `supabase/003_leaderboard.sql` | Run | `get_leaderboard()` RPC |
 | `supabase/004_hardening.sql` | Run | Drops unguarded `insert_territory()`; `claim_territory()` recomputes area server-side, validates walk ownership, merges own overlapping territories |
+| `supabase/005_popups.sql` | Run | Adds `owner_name` (email prefix via `auth.users`) to `get_territories_geojson()` properties for map popups |
 
 ## Database
 Tables: `users` (`id`, `username`, `display_name`, `created_at` — no email), `walks`, `territories` (PostGIS geometry), `territory_events`
@@ -37,7 +38,7 @@ Trigger: `on_auth_user_created` -> auto-inserts `id` into `public.users`
 RPCs:
 - `claim_territory(p_owner_id, p_walk_id, p_geom_json, p_area_m2)` -> JSON `{territory_id, clipped_count, lost_count, merged_count, area_m2}` — atomic conflict resolution via ST_Intersects + ST_Difference; clips other owners' territories; MERGES (ST_Union) your own overlapping ones. `p_area_m2` is ignored (area recomputed server-side from geometry), walk must be caller-owned and `in_progress`, min 500 m² enforced in SQL
 - ~~`insert_territory()`~~ — dropped in 004 (was SECURITY DEFINER with no auth check — anyone could insert territories for any owner)
-- `get_territories_geojson()` -> JSON FeatureCollection — all territories, public read
+- `get_territories_geojson()` -> JSON FeatureCollection — all territories, public read; after 005 properties include `owner_name` (email prefix, LEFT JOIN `auth.users`)
 - `get_leaderboard()` -> table rows — top 20 by total area, reads email from `auth.users` via SECURITY DEFINER
 
 ## Git phase tags
@@ -86,6 +87,8 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `tests/proxy.test.ts` | Middleware: unauthenticated pass-through and protected-route redirects; authenticated redirects from auth pages |
 | `tests/territories-api.test.ts` | `/api/territories` route: success, RPC error (500, generic message), null fallback; `fetchTerritories` throws on non-200 |
 | `tests/walks-actions.test.ts` | Server Actions (mocked Supabase): auth guards, ownership scoping, double-claim rejection, invalid/malformed polygon rejection, RPC failure handling, cache invalidation, server-area preference |
+| `tests/focus.test.ts` | `computeFocusTarget`: combined bounds, territory-only, fix-only, rival territories ignored, multi-territory span, non-Polygon safety |
+| `tests/format.test.ts` | `formatAreaM2` (m²/km² threshold, grouping), `formatClaimDate` (en-IN, garbage input) |
 
 ## Known operational notes
 - **Stale `.next` cache**: if routes return 404 unexpectedly (especially after major config changes), `rm -rf .next` and restart the dev server. Turbopack can generate a corrupted `routes.d.ts` that makes it lose track of compiled routes.
@@ -106,17 +109,7 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-### Phase 8 — Profile page (next)
-- `/profile` page: display name, member-since, territory count + area, walk count + distance
-- Data from cookie-based Supabase client; no caching (personal data, always fresh)
-- `unstable_instant = { prefetch: 'static' }` with Suspense wrapping all async content
-
-### Phase 9 — Territory popups
-- Click a polygon on the map to see owner name, area, and claim date
-- MapLibre click event on the territory fill layer; popup component
-- Owner name resolved via `get_territories_geojson()` owner_id lookup against `public.users`
-
-### Phase 10 — Walk history
+### Phase 10 — Walk history (next)
 - List of completed walks with distance, duration, and territory outcome (claimed/clipped/lost)
 - Reuse `walks` + `territory_events` tables; no new SQL needed
 - Could live as a tab on the Profile page or its own `/walks` route
@@ -133,13 +126,18 @@ proxy.ts                                    Next.js 16 middleware (auth guard + 
 lib/supabase/server.ts                      createServerClient with cookie handlers
 lib/supabase/client.ts                      createBrowserClient
 lib/geo/polygon.ts                          turf: simplify -> close ring -> kinks check -> area check
+lib/geo/focus.ts                            computeFocusTarget: initial camera bbox (own territories + GPS fix)
+lib/format.ts                               formatAreaM2 / formatClaimDate (en-IN, shared by popup + profile)
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
 app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell; unstable_instant = false
+app/(app)/_components/user-menu.tsx         Server Component: reads session, passes name/email to dropdown
+app/(app)/_components/user-menu-dropdown.tsx 'use client': User icon button -> profile link + sign out (radix dropdown)
+components/ui/dropdown-menu.tsx             shadcn-style wrapper over radix-ui DropdownMenu
 app/(app)/map/page.tsx                      static Server Component shell; unstable_instant = { prefetch: 'static' }
 app/(app)/map/_components/
   map-client.tsx                            'use client': walk state, TanStack Query, Realtime sub
-  territory-map.tsx                         MapLibre init, territory fill layer, live walk-path line
+  territory-map.tsx                         MapLibre init, fill layer, walk-path line, click popup, initial focus
   active-walk-controls.tsx                  GPS watchPosition, state machine, calls Server Actions
   map-skeleton.tsx                          CLS-safe placeholder matching map dimensions
 app/(app)/leaderboard/page.tsx              Cached leaderboard (cacheTag + cacheLife); unstable_instant = { prefetch: 'static' }
@@ -153,7 +151,10 @@ supabase/001_schema.sql                     Tables, RLS, trigger, helper RPCs
 supabase/002_phase5.sql                     claim_territory() + Realtime setup
 supabase/003_leaderboard.sql                get_leaderboard() RPC
 supabase/004_hardening.sql                  drop insert_territory; hardened claim_territory (server area, walk check, self-merge)
+supabase/005_popups.sql                     get_territories_geojson + owner_name for popups
 tests/polygon.test.ts                       buildPolygon unit tests (incl. malformed-payload rejection)
+tests/focus.test.ts                         computeFocusTarget unit tests
+tests/format.test.ts                        formatAreaM2 / formatClaimDate unit tests
 tests/proxy.test.ts                         middleware redirect unit tests
 tests/territories-api.test.ts              API route + fetchTerritories error handling tests
 tests/walks-actions.test.ts                 Server Action guards, claim flow, cache invalidation (mocked Supabase)
