@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatAreaM2, formatClaimDate } from "@/lib/format";
 
 export const unstable_instant = { prefetch: "static" };
 
@@ -68,14 +69,7 @@ async function ProfileContent() {
           label="Territories"
           value={territories.length.toString()}
         />
-        <StatCard
-          label="Area claimed"
-          value={
-            totalAreaM2 >= 1_000_000
-              ? `${(totalAreaM2 / 1_000_000).toFixed(2)} km²`
-              : `${Math.round(totalAreaM2).toLocaleString()} m²`
-          }
-        />
+        <StatCard label="Area claimed" value={formatAreaM2(totalAreaM2)} />
         <StatCard label="Walks" value={walks.length.toString()} />
         <StatCard
           label="Distance"
@@ -107,16 +101,9 @@ async function ProfileContent() {
                   Territory {i + 1}
                 </span>
                 <div className="flex items-center gap-4 text-right">
-                  <span className="font-medium">
-                    {t.area_m2 >= 1_000_000
-                      ? `${(t.area_m2 / 1_000_000).toFixed(2)} km²`
-                      : `${Math.round(t.area_m2).toLocaleString()} m²`}
-                  </span>
+                  <span className="font-medium">{formatAreaM2(t.area_m2)}</span>
                   <span className="text-muted-foreground text-xs">
-                    {new Date(t.claimed_at).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatClaimDate(t.claimed_at)}
                   </span>
                 </div>
               </div>

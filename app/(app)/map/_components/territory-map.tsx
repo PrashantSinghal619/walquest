@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { FocusTarget } from "@/lib/geo/focus";
+import { formatAreaM2, formatClaimDate } from "@/lib/format";
 
 const BENGALURU: [number, number] = [77.5946, 12.9716];
 const OFMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -20,6 +21,40 @@ interface TerritoryMapProps {
   currentPosition: [number, number] | null;
   geojson: GeoJSON.FeatureCollection;  // managed by TanStack Query in MapClient
   focusTarget: FocusTarget | null;     // initial camera target, applied once
+  currentUserId: string | null;        // to badge the viewer's own territories
+}
+
+// Feature properties arrive through MapLibre as plain JSON
+type TerritoryProps = {
+  owner_id?: string;
+  owner_name?: string;
+  area_m2?: number;
+  claimed_at?: string;
+};
+
+// Built with DOM APIs (textContent), never innerHTML - owner_name derives
+// from an email local part, which is user-controlled input.
+function buildPopupContent(props: TerritoryProps, currentUserId: string | null): HTMLElement {
+  const root = document.createElement("div");
+  root.style.cssText = "display:flex;flex-direction:column;gap:2px;min-width:140px";
+
+  const owner = document.createElement("p");
+  owner.style.cssText = "font-weight:600;font-size:0.875rem;margin:0";
+  owner.textContent =
+    props.owner_id && props.owner_id === currentUserId
+      ? `${props.owner_name ?? "You"} (you)`
+      : (props.owner_name ?? "Unknown walker");
+
+  const area = document.createElement("p");
+  area.style.cssText = "font-size:0.8rem;margin:0;opacity:0.75";
+  area.textContent = typeof props.area_m2 === "number" ? formatAreaM2(props.area_m2) : "";
+
+  const claimed = document.createElement("p");
+  claimed.style.cssText = "font-size:0.75rem;margin:0;opacity:0.6";
+  claimed.textContent = props.claimed_at ? `claimed ${formatClaimDate(props.claimed_at)}` : "";
+
+  root.append(owner, area, claimed);
+  return root;
 }
 
 export default function TerritoryMap({
@@ -27,12 +62,16 @@ export default function TerritoryMap({
   currentPosition,
   geojson,
   focusTarget,
+  currentUserId,
 }: TerritoryMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<maplibregl.Map | null>(null);
   const markerRef    = useRef<maplibregl.Marker | null>(null);
+  const popupRef     = useRef<maplibregl.Popup | null>(null);
   const mapReadyRef  = useRef(false); // true once map 'load' has fired
   const focusDoneRef = useRef(false); // the initial focus fires exactly once
+  const userIdRef    = useRef(currentUserId);
+  userIdRef.current  = currentUserId; // session resolves after map init
 
   // Latest props, readable from the 'load' handler: data can arrive before
   // the map finishes loading, and the prop effects below skip until it's
@@ -132,6 +171,25 @@ export default function TerritoryMap({
 
       mapReadyRef.current = true;
 
+      // Territory popup: owner, area, claim date
+      map.on("click", "territories-fill", (e) => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+        popupRef.current?.remove();
+        popupRef.current = new maplibregl.Popup({ maxWidth: "260px", offset: 8 })
+          .setLngLat(e.lngLat)
+          .setDOMContent(
+            buildPopupContent(feature.properties as TerritoryProps, userIdRef.current)
+          )
+          .addTo(map);
+      });
+      map.on("mouseenter", "territories-fill", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "territories-fill", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
       // Apply whatever arrived while the style was still loading - without
       // this, early data waits for the next prop change (up to a 45 s poll).
       (map.getSource("territories") as maplibregl.GeoJSONSource).setData(geojsonRef.current);
@@ -146,7 +204,9 @@ export default function TerritoryMap({
 
     return () => {
       ro.disconnect();
-      map.remove();
+      popupRef.current?.remove();
+      popupRef.current = null;
+      map.remove(); // also detaches all map/layer event listeners
       mapRef.current = null;
       mapReadyRef.current = false;
     };
