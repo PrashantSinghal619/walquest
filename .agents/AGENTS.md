@@ -90,6 +90,7 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `tests/walks-actions.test.ts` | Server Actions (mocked Supabase): auth guards, ownership scoping, double-claim rejection, invalid/malformed polygon rejection, RPC failure handling, cache invalidation, server-area preference |
 | `tests/focus.test.ts` | `computeFocusTarget`: combined bounds, territory-only, fix-only, rival territories ignored, multi-territory span, non-Polygon safety |
 | `tests/format.test.ts` | `formatAreaM2`, `formatClaimDate`, `formatDistanceM` (m/km), `formatDuration` (min, h+min, invalid) |
+| `tests/replay.test.ts` | `buildReplayTrack` cumulative distances; `pointAtFraction` constant-speed interpolation, clamping, degenerate tracks |
 
 ## Known operational notes
 - **Stale `.next` cache**: if routes return 404 unexpectedly (especially after major config changes), `rm -rf .next` and restart the dev server. Turbopack can generate a corrupted `routes.d.ts` that makes it lose track of compiled routes.
@@ -110,7 +111,13 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-All planned phases (3-11) are complete. Candidate future work: push notifications on territory loss (VAPID + web-push, see Next.js PWA guide), offline tile caching, walk detail view with route replay.
+All planned phases (3-12) are complete. Candidate future work: push notifications on territory loss (VAPID + web-push, see Next.js PWA guide), offline tile caching.
+
+### Walk replay notes (phase 12)
+- `/profile/walks/[id]` — nested under /profile so the proxy guard + RLS own-read cover it for free; foreign/garbage ids 404
+- `unstable_instant` on dynamic segments needs `prefetch: 'runtime'` + `samples: [{ params: {...} }]` — static-prefetch validation fails the build with "param not defined in samples"
+- `lib/geo/replay.ts`: buildReplayTrack (cumulative haversine distances) + pointAtFraction — constant ground-speed interpolation, not per-index
+- Replay animates via requestAnimationFrame over 6 s: dashed sage full path, terracotta progress line, marker; autoplays on load, Replay button after
 
 ### PWA notes (phase 11)
 - `app/manifest.ts` -> served at `/manifest.webmanifest`; start_url `/map`, standalone, portrait
@@ -130,6 +137,7 @@ lib/supabase/server.ts                      createServerClient with cookie handl
 lib/supabase/client.ts                      createBrowserClient
 lib/geo/polygon.ts                          turf: simplify -> close ring -> kinks check -> area check
 lib/geo/focus.ts                            computeFocusTarget: initial camera bbox (own territories + GPS fix)
+lib/geo/replay.ts                           buildReplayTrack / pointAtFraction: constant-speed walk replay math
 lib/format.ts                               formatAreaM2 / formatClaimDate (en-IN, shared by popup + profile)
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)

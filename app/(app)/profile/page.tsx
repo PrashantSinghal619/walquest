@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -147,9 +148,10 @@ async function ProfileContent() {
         ) : (
           <div className="divide-y divide-border rounded-lg border">
             {recentWalks.map((w) => (
-              <div
+              <Link
                 key={w.id}
-                className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                href={`/profile/walks/${w.id}`}
+                className="flex items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-accent/50"
               >
                 <div className="min-w-0">
                   <p className="font-medium">{formatClaimDate(w.started_at)}</p>
@@ -162,7 +164,7 @@ async function ProfileContent() {
                   status={w.status}
                   events={eventsByWalk.get(w.id) ?? []}
                 />
-              </div>
+              </Link>
             ))}
           </div>
         )}
