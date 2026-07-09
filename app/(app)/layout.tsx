@@ -75,7 +75,8 @@ export default function AppLayout({
 }
 
 function UserMenuSkeleton() {
+  // Matches the size-9 round icon button so the header never shifts
   return (
-    <div className="h-8 w-24 animate-pulse rounded-md bg-muted" aria-hidden />
+    <div className="size-9 animate-pulse rounded-full bg-muted" aria-hidden />
   );
 }

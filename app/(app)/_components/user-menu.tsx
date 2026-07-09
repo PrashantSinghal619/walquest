@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
-import { signOut } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
+import { UserMenuDropdown } from "./user-menu-dropdown";
 import type { cookies } from "next/headers";
 
 type CookieStorePromise = ReturnType<typeof cookies>;
@@ -43,16 +43,11 @@ export async function UserMenu({ cookiePromise }: UserMenuProps) {
     );
   }
 
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-muted-foreground truncate max-w-[160px]">
-        {user.email}
-      </span>
-      <form action={signOut}>
-        <Button variant="ghost" size="sm" type="submit">
-          Sign out
-        </Button>
-      </form>
-    </div>
-  );
+  const email = user.email ?? "";
+  const name =
+    (user.user_metadata?.display_name as string | undefined) ??
+    (email ? email.split("@")[0] : "Walker");
+  const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
+
+  return <UserMenuDropdown name={name} email={email} avatarUrl={avatarUrl} />;
 }
