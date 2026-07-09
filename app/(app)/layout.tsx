@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NavLinks } from "./_components/nav-links";
 import { UserMenu } from "./_components/user-menu";
 import { Providers } from "./providers";
 
@@ -43,18 +44,8 @@ export default function AppLayout({
           >
             walquest
           </Link>
-          <Link
-            href="/map"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Map
-          </Link>
-          <Link
-            href="/leaderboard"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Leaderboard
-          </Link>
+          {/* Client island: highlights the link matching the current route */}
+          <NavLinks />
         </nav>
 
         <div className="flex items-center gap-3">
