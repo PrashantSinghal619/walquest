@@ -7,18 +7,20 @@ import {
 } from "../lib/format";
 
 describe("formatAreaM2", () => {
-  it("formats small areas as whole m² with grouping", () => {
-    expect(formatAreaM2(17444.4752442482)).toBe("17,444 m²");
+  it("formats small areas (under a hectare) as whole m² with grouping", () => {
     expect(formatAreaM2(500)).toBe("500 m²");
+    expect(formatAreaM2(9_999)).toBe("9,999 m²");
   });
 
-  it("switches to km² at one million m²", () => {
+  it("switches to km² at 10,000 m² with three decimals under 1 km²", () => {
+    expect(formatAreaM2(10_000)).toBe("0.010 km²");
+    expect(formatAreaM2(17444.4752442482)).toBe("0.017 km²");
+    expect(formatAreaM2(999_999)).toBe("1.000 km²"); // rounds up at the boundary
+  });
+
+  it("uses two decimals from 1 km² up", () => {
     expect(formatAreaM2(1_000_000)).toBe("1.00 km²");
     expect(formatAreaM2(2_500_000)).toBe("2.50 km²");
-  });
-
-  it("stays in m² just below the km² threshold", () => {
-    expect(formatAreaM2(999_999)).toContain("m²");
   });
 
   it("handles zero", () => {

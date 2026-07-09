@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import { lineString, length as turfLength } from "@turf/turf";
 import { startWalk, discardWalk, completeWalk } from "@/app/actions/walks";
+import { formatAreaM2 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 interface ActiveWalkControlsProps {
@@ -209,7 +210,7 @@ export function ActiveWalkControls({
             <p className="text-sm font-medium text-foreground">
               ✓ Territory claimed!{" "}
               <span className="text-muted-foreground font-normal">
-                {(state.areaM2 / 1_000_000).toFixed(4)} km²
+                {formatAreaM2(state.areaM2)}
               </span>
             </p>
             {(state.clippedCount > 0 || state.lostCount > 0 || state.mergedCount > 0) && (

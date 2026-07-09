@@ -1,3 +1,4 @@
+import { formatAreaM2 } from "@/lib/format";
 import type { LeaderboardRow } from "../page";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -50,7 +51,7 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
                 {row.territory_count}
               </td>
               <td className="px-4 py-3 text-right tabular-nums font-medium">
-                {(row.total_area_m2 / 1_000_000).toFixed(4)} km²
+                {formatAreaM2(row.total_area_m2)}
               </td>
             </tr>
           ))}
