@@ -110,14 +110,21 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-### Phase 11 — PWA / install prompt (next)
-- `manifest.json` + service worker so the app installs on Android home screen
-- Relevant since the whole point is outdoor phone use
-- `next-pwa` or manual approach via `app/manifest.ts`
+All planned phases (3-11) are complete. Candidate future work: push notifications on territory loss (VAPID + web-push, see Next.js PWA guide), offline tile caching, walk detail view with route replay.
+
+### PWA notes (phase 11)
+- `app/manifest.ts` -> served at `/manifest.webmanifest`; start_url `/map`, standalone, portrait
+- NO service worker - not required for installability (Chrome dropped it), and the app is online-only (tiles, Supabase, GPS)
+- Icons generated from SVG via sharp: `public/icon-192.png`, `public/icon-512.png` (full-bleed, doubles as maskable)
+- `components/install-prompt.tsx` on the landing page: captures `beforeinstallprompt` (Chromium) for an Install button; iOS gets an Add-to-Home-Screen hint; hidden when already standalone
+- Status-bar theming via `viewport.themeColor` in the root layout (light Parchment / dark Olivewood)
 
 ## File map
 ```
 next.config.ts                              cacheComponents: true, instantNavigationDevToolsToggle: true
+app/manifest.ts                             PWA manifest (/manifest.webmanifest)
+components/install-prompt.tsx               'use client': beforeinstallprompt button / iOS hint (landing page)
+public/icon-192.png, icon-512.png           PWA icons (generated from SVG via sharp)
 proxy.ts                                    Next.js 16 middleware (auth guard + signed-in redirects)
 lib/supabase/server.ts                      createServerClient with cookie handlers
 lib/supabase/client.ts                      createBrowserClient

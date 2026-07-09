@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { HeroBackground } from "@/components/hero-background";
+import { InstallPrompt } from "@/components/install-prompt";
 import { getLaunchTagline, getLiveWalkerCount } from "@/lib/content/stats";
 
 export const unstable_instant = { prefetch: "static" };
@@ -42,6 +43,8 @@ export default function Home() {
         <Button size="lg" asChild>
           <Link href="/auth/login">Get started</Link>
         </Button>
+        {/* Renders an install button (Chromium), an iOS hint, or nothing */}
+        <InstallPrompt />
       </main>
     </div>
   );
