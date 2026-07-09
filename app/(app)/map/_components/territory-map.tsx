@@ -22,6 +22,46 @@ interface TerritoryMapProps {
   geojson: GeoJSON.FeatureCollection;  // managed by TanStack Query in MapClient
   focusTarget: FocusTarget | null;     // initial camera target, applied once
   currentUserId: string | null;        // to badge the viewer's own territories
+  onLocateFix: (fix: [number, number]) => void; // locate button got a fresh fix
+}
+
+// Custom control instead of maplibre's GeolocateControl: that one renders
+// its own blue dot, which would clash with the app's terracotta marker.
+// Styled with maplibre's ctrl classes so it stacks under the zoom buttons.
+class LocateControl implements maplibregl.IControl {
+  private container: HTMLDivElement | null = null;
+  private button: HTMLButtonElement | null = null;
+
+  constructor(private readonly onClick: () => void) {}
+
+  onAdd(): HTMLElement {
+    this.container = document.createElement("div");
+    this.container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    this.button = document.createElement("button");
+    this.button.type = "button";
+    this.button.title = "Focus on my location";
+    this.button.setAttribute("aria-label", "Focus on my location");
+    // Crosshair icon, currentColor so it follows the ctrl theme
+    this.button.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:block;margin:auto">' +
+      '<circle cx="12" cy="12" r="3.5"/>' +
+      '<path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg>';
+    this.button.onclick = this.onClick;
+    this.container.appendChild(this.button);
+    return this.container;
+  }
+
+  onRemove(): void {
+    this.container?.remove();
+    this.container = null;
+    this.button = null;
+  }
+
+  setBusy(busy: boolean): void {
+    if (!this.button) return;
+    this.button.disabled = busy;
+    this.button.style.opacity = busy ? "0.5" : "";
+  }
 }
 
 // Feature properties arrive through MapLibre as plain JSON
@@ -63,6 +103,7 @@ export default function TerritoryMap({
   geojson,
   focusTarget,
   currentUserId,
+  onLocateFix,
 }: TerritoryMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<maplibregl.Map | null>(null);
@@ -79,9 +120,43 @@ export default function TerritoryMap({
   const geojsonRef  = useRef(geojson);
   const positionRef = useRef(currentPosition);
   const focusRef    = useRef(focusTarget);
+  const onLocateFixRef = useRef(onLocateFix);
   geojsonRef.current  = geojson;
   positionRef.current = currentPosition;
   focusRef.current    = focusTarget;
+  onLocateFixRef.current = onLocateFix;
+  const locateControlRef = useRef<LocateControl | null>(null);
+
+  // Locate button: fly to the last known fix immediately, or request a
+  // fresh one when we don't have any yet (e.g. GPS was slow on load).
+  function focusOnLocation(map: maplibregl.Map) {
+    const flyTo = (fix: [number, number]) =>
+      map.flyTo({ center: fix, zoom: Math.max(map.getZoom(), 16), duration: 800 });
+
+    const known = positionRef.current;
+    if (known) {
+      flyTo(known);
+      return;
+    }
+    if (!("geolocation" in navigator)) return;
+    locateControlRef.current?.setBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // The fix can arrive after unmount (cleanup nulls mapRef) or after
+        // a re-init swapped the map - never touch a removed map instance.
+        if (mapRef.current !== map) return;
+        const fix: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+        onLocateFixRef.current(fix); // parent state -> dot appears
+        locateControlRef.current?.setBusy(false);
+        flyTo(fix);
+      },
+      () => {
+        if (mapRef.current !== map) return;
+        locateControlRef.current?.setBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+  }
 
   function applyFocus(map: maplibregl.Map) {
     const target = focusRef.current;
@@ -122,6 +197,8 @@ export default function TerritoryMap({
 
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+    locateControlRef.current = new LocateControl(() => focusOnLocation(map));
+    map.addControl(locateControlRef.current, "top-right");
 
     map.on("load", () => {
       // Territories layer - data flows in via the geojson prop
@@ -206,7 +283,8 @@ export default function TerritoryMap({
       ro.disconnect();
       popupRef.current?.remove();
       popupRef.current = null;
-      map.remove(); // also detaches all map/layer event listeners
+      locateControlRef.current = null;
+      map.remove(); // also detaches all map/layer event listeners and controls
       mapRef.current = null;
       mapReadyRef.current = false;
     };

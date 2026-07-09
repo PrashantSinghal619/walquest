@@ -149,6 +149,7 @@ export function MapClient() {
         geojson={geojson}
         focusTarget={focusTarget}
         currentUserId={auth?.userId ?? null}
+        onLocateFix={setCurrentPosition}
       />
       <ActiveWalkControls
         onPointsUpdate={setWalkPoints}
