@@ -47,6 +47,15 @@ export function MapClient() {
   // and a GPS fix. GPS is the slow one, so it gets a hard 2.5 s timeout - the
   // map must settle on its target within ~3 s even when GPS is denied or slow.
 
+  // Register the service worker on map load - it owns the offline tile
+  // cache (and push display, though subscribing happens on the profile).
+  // Registration is idempotent; failures just mean no offline tiles.
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
   // Who is signed in (read from the local session - no network round-trip)
   const [auth, setAuth] = useState<{ userId: string | null } | null>(null);
   useEffect(() => {

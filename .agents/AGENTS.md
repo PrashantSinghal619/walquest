@@ -123,6 +123,13 @@ All planned phases (3-14) are complete (13: push notifications, 14: offline tile
 - `components/push-toggle.tsx` on the profile page: permission -> SW register -> pushManager.subscribe -> `subscribePush` action; renders nothing when unsupported/unconfigured
 - `app/actions/push.ts`: subscribe (validates untrusted subscription JSON, upsert on endpoint) / unsubscribe (scoped to own row)
 
+### Offline tile cache notes (phase 14)
+- `public/sw.js` fetch handler intercepts ONLY `tiles.openfreemap.org` GETs - never app assets (stale Next.js chunks are worse than no cache)
+- Tiles/glyphs/sprites: cache-first (immutable-ish, latency matters); style JSON: network-first with cache fallback
+- Bounded: `walquest-tiles-v1` cache, 2500 entries, oldest-evicted; bump the cache name to invalidate, `activate` deletes old versions
+- SW registered on map load in `map-client.tsx` (idempotent) - not only when enabling push
+- Scope of "offline": map KEEPS RENDERING through connectivity drops mid-session on previously seen areas; the app itself is not offline-capable (Supabase, GPS claims, auth all need network)
+
 ### Walk replay notes (phase 12)
 - `/profile/walks/[id]` — nested under /profile so the proxy guard + RLS own-read cover it for free; foreign/garbage ids 404
 - `unstable_instant` on dynamic segments needs `prefetch: 'runtime'` + `samples: [{ params: {...} }]` — static-prefetch validation fails the build with "param not defined in samples"
@@ -131,7 +138,7 @@ All planned phases (3-14) are complete (13: push notifications, 14: offline tile
 
 ### PWA notes (phase 11)
 - `app/manifest.ts` -> served at `/manifest.webmanifest`; start_url `/map`, standalone, portrait
-- NO service worker - not required for installability (Chrome dropped it), and the app is online-only (tiles, Supabase, GPS)
+- A service worker was NOT needed for installability (Chrome dropped that requirement); `public/sw.js` was added later anyway by phases 13 (push) and 14 (tile cache)
 - Icons generated from SVG via sharp: `public/icon-192.png`, `public/icon-512.png` (full-bleed, doubles as maskable)
 - `components/install-prompt.tsx` on the landing page: captures `beforeinstallprompt` (Chromium) for an Install button; iOS gets an Add-to-Home-Screen hint; hidden when already standalone
 - Status-bar theming via `viewport.themeColor` in the root layout (light Parchment / dark Olivewood)
@@ -152,7 +159,7 @@ lib/format.ts                               formatAreaM2 / formatClaimDate (en-I
 lib/push.ts                                 notifyTerritoryLoss via web-push (service-role read, graceful no-op)
 app/actions/push.ts                         subscribePush / unsubscribePush Server Actions
 components/push-toggle.tsx                  'use client': territory-alerts toggle on profile
-public/sw.js                                service worker: push display + notification click
+public/sw.js                                service worker: push display/click + offline tile cache (openfreemap only)
 supabase/007_push.sql                       push_subscriptions table + RLS
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
