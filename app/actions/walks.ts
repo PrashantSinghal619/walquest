@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { lineString, length as turfLength } from "@turf/turf";
 import { createClient } from "@/lib/supabase/server";
 import { buildPolygon } from "@/lib/geo/polygon";
+import { notifyTerritoryLoss } from "@/lib/push";
 
 export type StartWalkResult =
   | { ok: true; walkId: string }
@@ -146,6 +147,32 @@ export async function completeWalk(
 
   revalidatePath("/map");
   updateTag("leaderboard");
+
+  // Push-notify the owners this claim clipped or erased. Per-owner losses
+  // come from the events the RPC just wrote. Never let notification
+  // problems fail a successful claim.
+  if (clippedCount + lostCount > 0) {
+    try {
+      const { data: lossEvents } = await supabase
+        .from("territory_events")
+        .select("affected_owner_id, area_delta_m2")
+        .eq("walk_id", walkId)
+        .in("type", ["clipped", "lost"]);
+
+      const actorName = user.email?.split("@")[0] ?? "A rival walker";
+      await notifyTerritoryLoss(
+        actorName,
+        (lossEvents ?? [])
+          .filter((e) => e.affected_owner_id)
+          .map((e) => ({
+            ownerId: e.affected_owner_id as string,
+            areaLostM2: Math.abs(e.area_delta_m2 ?? 0),
+          }))
+      );
+    } catch (err) {
+      console.error("territory-loss notification failed:", err);
+    }
+  }
 
   // Prefer the server-computed area: after a self-overlap merge the RPC's
   // number is the true territory size, not the raw walked loop's.

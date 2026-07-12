@@ -31,15 +31,21 @@ Built as a hands-on vehicle for learning Next.js App Router internals: React Ser
 1. **Install**: `npm install`
 
 2. **Supabase**: create a project, then run the migrations in order in Dashboard → SQL Editor:
-   `supabase/001_schema.sql` → `002_phase5.sql` → `003_leaderboard.sql` → `004_hardening.sql` → `005_popups.sql`
+   `supabase/001_schema.sql` → `002_phase5.sql` → `003_leaderboard.sql` → `004_hardening.sql` → `005_popups.sql` → `006_walk_distance.sql` → `007_push.sql`
 
 3. **Env vars**: create `.env.local`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+   # Push notifications (optional - the app runs fine without these)
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=<from: npx web-push generate-vapid-keys>
+   VAPID_PRIVATE_KEY=<same command>
+   VAPID_SUBJECT=mailto:<your email>
+   SUPABASE_SERVICE_ROLE_KEY=<Supabase Dashboard -> Settings -> API>
    ```
-   Note: Supabase renamed the anon key — the env var is `PUBLISHABLE_KEY`, not `ANON_KEY`.
+   Note: Supabase renamed the anon key — the env var is `PUBLISHABLE_KEY`, not `ANON_KEY`. The service-role key is only used server-side to look up push subscriptions of players whose territory was clipped; without it (or the VAPID vars), notifications silently no-op.
 
 4. **Auth redirect**: in Supabase Dashboard → Authentication → URL Configuration, add `http://localhost:3000/auth/callback` (and your production URL) to the redirect allowlist.
 

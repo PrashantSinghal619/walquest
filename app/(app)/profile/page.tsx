@@ -8,6 +8,7 @@ import {
   formatDistanceM,
   formatDuration,
 } from "@/lib/format";
+import { PushToggle } from "@/components/push-toggle";
 
 export const unstable_instant = { prefetch: "static" };
 
@@ -20,6 +21,8 @@ export default function ProfilePage() {
           Stats, territories, and your place in Bengaluru.
         </p>
       </div>
+      {/* Client-only, no server data - lives outside the Suspense content */}
+      <PushToggle />
       <Suspense fallback={<ProfileSkeleton />}>
         <ProfileContent />
       </Suspense>

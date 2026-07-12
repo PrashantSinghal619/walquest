@@ -9,8 +9,13 @@ vi.mock("next/cache", () => ({
   updateTag: vi.fn(),
 }));
 
+vi.mock("@/lib/push", () => ({
+  notifyTerritoryLoss: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath, updateTag } from "next/cache";
+import { notifyTerritoryLoss } from "@/lib/push";
 import { startWalk, completeWalk, discardWalk } from "../app/actions/walks";
 
 const mockCreateClient = vi.mocked(createClient);
@@ -46,6 +51,7 @@ type QueryBuilderMock = {
   update: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
   then: (onOk: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) => Promise<unknown>;
 };
@@ -59,6 +65,7 @@ function queryBuilder(
     update: vi.fn(() => b),
     upsert: vi.fn(() => b),
     eq: vi.fn(() => b),
+    in: vi.fn(() => b),
     single: vi.fn(() => Promise.resolve(result)),
     then: (onOk, onErr) => Promise.resolve(result).then(onOk, onErr),
   };
@@ -230,8 +237,16 @@ describe("completeWalk", () => {
   it("claims territory, completes the walk, and invalidates caches on success", async () => {
     const walkSelect = queryBuilder({ data: { id: WALK_ID, status: "in_progress" }, error: null });
     const walkUpdate = queryBuilder();
+    const RIVAL = "99999999-9999-9999-9999-999999999999";
+    const lossEvents = queryBuilder({
+      data: [
+        { affected_owner_id: RIVAL, area_delta_m2: -1200 },
+        { affected_owner_id: RIVAL, area_delta_m2: -800 },
+      ],
+      error: null,
+    });
     const supabase = makeSupabase({
-      tables: { walks: [walkSelect, walkUpdate] },
+      tables: { walks: [walkSelect, walkUpdate], territory_events: [lossEvents] },
       rpcResult: {
         data: { territory_id: TERRITORY_ID, clipped_count: 2, lost_count: 1 },
         error: null,
@@ -271,6 +286,12 @@ describe("completeWalk", () => {
     // Read-your-own-writes cache invalidation
     expect(revalidatePath).toHaveBeenCalledWith("/map");
     expect(updateTag).toHaveBeenCalledWith("leaderboard");
+
+    // Affected owners get push-notified with their per-event losses
+    expect(notifyTerritoryLoss).toHaveBeenCalledWith("A rival walker", [
+      { ownerId: "99999999-9999-9999-9999-999999999999", areaLostM2: 1200 },
+      { ownerId: "99999999-9999-9999-9999-999999999999", areaLostM2: 800 },
+    ]);
   });
 
   it("prefers the server-computed area over the client-side turf area (self-overlap merge)", async () => {
@@ -296,5 +317,7 @@ describe("completeWalk", () => {
       expect(result.areaM2).toBe(2_500_000);
       expect(result.mergedCount).toBe(2);
     }
+    // Nobody was clipped - no notification round-trip
+    expect(notifyTerritoryLoss).not.toHaveBeenCalled();
   });
 });

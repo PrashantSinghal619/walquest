@@ -27,6 +27,7 @@ SQL migrations — run in order in Supabase Dashboard -> SQL Editor:
 | `supabase/004_hardening.sql` | Run | Drops unguarded `insert_territory()`; `claim_territory()` recomputes area server-side, validates walk ownership, merges own overlapping territories |
 | `supabase/005_popups.sql` | Run | Adds `owner_name` (email prefix via `auth.users`) to `get_territories_geojson()` properties for map popups |
 | `supabase/006_walk_distance.sql` | **NOT RUN YET** | One-time backfill of `walks.distance_m` from stored GPS paths (completeWalk only started storing it in phase 10) |
+| `supabase/007_push.sql` | **NOT RUN YET** | `push_subscriptions` table (endpoint unique, own-rows RLS) for territory-loss web push |
 
 ## Database
 Tables: `users` (`id`, `username`, `display_name`, `created_at` — no email), `walks`, `territories` (PostGIS geometry), `territory_events`
@@ -91,6 +92,7 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `tests/focus.test.ts` | `computeFocusTarget`: combined bounds, territory-only, fix-only, rival territories ignored, multi-territory span, non-Polygon safety |
 | `tests/format.test.ts` | `formatAreaM2`, `formatClaimDate`, `formatDistanceM` (m/km), `formatDuration` (min, h+min, invalid) |
 | `tests/replay.test.ts` | `buildReplayTrack` cumulative distances; `pointAtFraction` constant-speed interpolation, clamping, degenerate tracks |
+| `tests/push.test.ts` | subscribe/unsubscribe actions (auth guards, payload validation, endpoint upsert, scoped delete); `buildLossPayload`; `pushConfigured` env gating |
 
 ## Known operational notes
 - **Stale `.next` cache**: if routes return 404 unexpectedly (especially after major config changes), `rm -rf .next` and restart the dev server. Turbopack can generate a corrupted `routes.d.ts` that makes it lose track of compiled routes.
@@ -111,7 +113,15 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 | `app/(app)/leaderboard/page.tsx` | Cached leaderboard with cacheTag('leaderboard') |
 
 ## Roadmap
-All planned phases (3-12) are complete. Candidate future work: push notifications on territory loss (VAPID + web-push, see Next.js PWA guide), offline tile caching.
+All planned phases (3-14) are complete (13: push notifications, 14: offline tile caching).
+
+### Push notification notes (phase 13)
+- `lib/push.ts`: `notifyTerritoryLoss()` - reads victims' subscriptions with SUPABASE_SERVICE_ROLE_KEY (their RLS blocks the claimer's session by design), sends via web-push, deletes dead endpoints (404/410). No-ops silently unless ALL env vars present: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `SUPABASE_SERVICE_ROLE_KEY`
+- VAPID keys generated via `npx web-push generate-vapid-keys`; stored in `.env.local` AND must be set in Vercel (NEXT_PUBLIC_ var is inlined at BUILD time - adding it requires a redeploy)
+- `completeWalk` notifies only when `clipped_count + lost_count > 0`; per-owner losses read back from `territory_events` by walk_id (no RPC change needed); failures never fail the claim
+- `public/sw.js`: push -> showNotification, notificationclick -> focus/open /map
+- `components/push-toggle.tsx` on the profile page: permission -> SW register -> pushManager.subscribe -> `subscribePush` action; renders nothing when unsupported/unconfigured
+- `app/actions/push.ts`: subscribe (validates untrusted subscription JSON, upsert on endpoint) / unsubscribe (scoped to own row)
 
 ### Walk replay notes (phase 12)
 - `/profile/walks/[id]` — nested under /profile so the proxy guard + RLS own-read cover it for free; foreign/garbage ids 404
@@ -139,6 +149,11 @@ lib/geo/polygon.ts                          turf: simplify -> close ring -> kink
 lib/geo/focus.ts                            computeFocusTarget: initial camera bbox (own territories + GPS fix)
 lib/geo/replay.ts                           buildReplayTrack / pointAtFraction: constant-speed walk replay math
 lib/format.ts                               formatAreaM2 / formatClaimDate (en-IN, shared by popup + profile)
+lib/push.ts                                 notifyTerritoryLoss via web-push (service-role read, graceful no-op)
+app/actions/push.ts                         subscribePush / unsubscribePush Server Actions
+components/push-toggle.tsx                  'use client': territory-alerts toggle on profile
+public/sw.js                                service worker: push display + notification click
+supabase/007_push.sql                       push_subscriptions table + RLS
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
 app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell; unstable_instant = false
