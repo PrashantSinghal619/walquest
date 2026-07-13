@@ -10,9 +10,22 @@ const BENGALURU: [number, number] = [77.5946, 12.9716];
 const OFMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
 // Theme palette colours as hex - MapLibre layer paint can't use CSS vars
-const TERRITORY_FILL   = "#828B6A"; // Sage
-const TERRITORY_STROKE = "#4A5240"; // darker Sage
-const WALK_PATH_COLOR  = "#C25B3F"; // Terracotta
+const OWN_FILL     = "#828B6A"; // Sage - your ground
+const OWN_STROKE   = "#4A5240"; // darker Sage
+const RIVAL_FILL   = "#C25B3F"; // Terracotta - everyone else's
+const RIVAL_STROKE = "#8F3E28"; // darker Terracotta
+const WALK_PATH_COLOR = "#C25B3F"; // Terracotta
+
+// Data-driven paint: colour by ownership so adjacent territories from
+// different owners never blend into one blob (a rival clipping your edge
+// used to be invisible - same sage on sage).
+function ownershipPaint(userId: string | null) {
+  const isMine = ["==", ["get", "owner_id"], userId ?? ""] as const;
+  return {
+    fill: ["case", isMine, OWN_FILL, RIVAL_FILL] as unknown as maplibregl.ExpressionSpecification,
+    stroke: ["case", isMine, OWN_STROKE, RIVAL_STROKE] as unknown as maplibregl.ExpressionSpecification,
+  };
+}
 
 const EMPTY_GEOJSON: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -203,14 +216,16 @@ export default function TerritoryMap({
     map.addControl(locateControlRef.current, "top-right");
 
     map.on("load", () => {
-      // Territories layer - data flows in via the geojson prop
+      // Territories layer - data flows in via the geojson prop; colours
+      // are ownership-driven (own sage / rival terracotta)
+      const paint = ownershipPaint(userIdRef.current);
       map.addSource("territories", { type: "geojson", data: EMPTY_GEOJSON });
       map.addLayer({
         id: "territories-fill",
         type: "fill",
         source: "territories",
         paint: {
-          "fill-color": TERRITORY_FILL,
+          "fill-color": paint.fill,
           "fill-opacity": 0.35,
         },
       });
@@ -219,7 +234,7 @@ export default function TerritoryMap({
         type: "line",
         source: "territories",
         paint: {
-          "line-color": TERRITORY_STROKE,
+          "line-color": paint.stroke,
           "line-width": 2,
         },
       });
@@ -307,6 +322,15 @@ export default function TerritoryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTarget]);
 
+  // ── Re-colour ownership when the session resolves (after map init) ─────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current || !map.getLayer("territories-fill")) return;
+    const paint = ownershipPaint(currentUserId);
+    map.setPaintProperty("territories-fill", "fill-color", paint.fill);
+    map.setPaintProperty("territories-outline", "line-color", paint.stroke);
+  }, [currentUserId]);
+
   // ── Update walk-path source as GPS points accumulate ───────────────────────
   useEffect(() => {
     const map = mapRef.current;
@@ -344,5 +368,28 @@ export default function TerritoryMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPosition, walkPoints.length]);
 
-  return <div ref={containerRef} className="flex-1 w-full" />;
+  return (
+    <div className="relative flex-1 w-full">
+      <div ref={containerRef} className="absolute inset-0" />
+      {/* Ownership legend - mirrors the layer paint above */}
+      <div className="absolute top-3 left-3 z-10 rounded-md border border-border/60 bg-background/90 px-3 py-2 backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            aria-hidden
+            className="inline-block size-3 rounded-sm border"
+            style={{ backgroundColor: "rgba(130,139,106,0.55)", borderColor: OWN_STROKE }}
+          />
+          <span>Yours</span>
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-xs">
+          <span
+            aria-hidden
+            className="inline-block size-3 rounded-sm border"
+            style={{ backgroundColor: "rgba(194,91,63,0.55)", borderColor: RIVAL_STROKE }}
+          />
+          <span>Rivals</span>
+        </div>
+      </div>
+    </div>
+  );
 }

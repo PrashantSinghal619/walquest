@@ -79,6 +79,7 @@ phase-7  Instant navigation audit (unstable_instant)
 ### Map
 - **`ssr: false` constraint**: `next/dynamic(..., { ssr: false })` must live in a `'use client'` file. `map-client.tsx` is a thin wrapper for this reason alone
 - **ResizeObserver**: MapLibre reads dimensions at init; ResizeObserver calls `map.resize()` when container size changes
+- **Ownership colours**: territories are painted by a data-driven expression on `owner_id` — own = Sage, rivals = Terracotta (`ownershipPaint()` in territory-map.tsx; re-applied via setPaintProperty when the session resolves). Legend overlay top-left. Uniform colouring made adjacent territories from different owners read as one blob (RCA: a rival's clip of your edge was invisible)
 
 ## Testing
 Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:watch` for watch mode).
