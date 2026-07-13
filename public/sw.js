@@ -11,16 +11,23 @@ const TILE_CACHE = "walquest-tiles-v1";
 const TILE_HOST = "tiles.openfreemap.org";
 const MAX_TILE_ENTRIES = 2500; // ~100-150 MB worst case; oldest evicted first
 
+// Take over immediately on update - otherwise a buggy worker keeps
+// controlling every open client (worst case: an installed PWA that is
+// never fully closed) until long after the fix ships.
+self.addEventListener("install", () => self.skipWaiting());
+
 self.addEventListener("activate", (event) => {
-  // Drop caches from older versions of this worker
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k.startsWith("walquest-tiles-") && k !== TILE_CACHE)
-          .map((k) => caches.delete(k))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith("walquest-tiles-") && k !== TILE_CACHE)
+            .map((k) => caches.delete(k))
+        )
       )
-    )
+      .then(() => self.clients.claim())
   );
 });
 
@@ -31,22 +38,31 @@ self.addEventListener("fetch", (event) => {
   // Style JSON: network-first so style updates land, cache fallback offline.
   // Tiles/glyphs/sprites: cache-first - effectively immutable, and latency
   // matters while the map is panning.
-  event.respondWith(
-    url.pathname.startsWith("/styles/")
-      ? networkFirst(event.request)
-      : cacheFirst(event.request)
-  );
+  //
+  // Final catch: if the caching layer itself fails in any unforeseen way,
+  // fall back to a plain network fetch - the cache must never be the
+  // reason the map goes blank.
+  const strategy = url.pathname.startsWith("/styles/") ? networkFirst : cacheFirst;
+  event.respondWith(strategy(event.request).catch(() => fetch(event.request)));
 });
+
+// Best-effort store: quota pressure or storage errors (e.g. private
+// browsing) must never fail the response that is already in hand.
+async function storeInCache(cache, request, response) {
+  try {
+    await cache.put(request, response);
+    await trimCache(cache);
+  } catch {
+    // drop it - serving the network response matters more than caching it
+  }
+}
 
 async function cacheFirst(request) {
   const cache = await caches.open(TILE_CACHE);
-  const hit = await cache.match(request);
+  const hit = await cache.match(request).catch(() => undefined);
   if (hit) return hit;
   const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-    await trimCache(cache);
-  }
+  if (response.ok) await storeInCache(cache, request, response.clone());
   return response;
 }
 
@@ -54,10 +70,10 @@ async function networkFirst(request) {
   const cache = await caches.open(TILE_CACHE);
   try {
     const response = await fetch(request);
-    if (response.ok) await cache.put(request, response.clone());
+    if (response.ok) await storeInCache(cache, request, response.clone());
     return response;
   } catch (err) {
-    const hit = await cache.match(request);
+    const hit = await cache.match(request).catch(() => undefined);
     if (hit) return hit;
     throw err;
   }

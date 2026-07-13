@@ -369,8 +369,12 @@ export default function TerritoryMap({
   }, [currentPosition, walkPoints.length]);
 
   return (
-    <div className="relative flex-1 w-full">
-      <div ref={containerRef} className="absolute inset-0" />
+    // The map container must be an IN-FLOW flex child, not absolute:
+    // maplibre-gl.css (loaded after globals.css with the lazy map chunk)
+    // stamps `.maplibregl-map { position: relative }` on it, overriding
+    // Tailwind's `absolute` and collapsing the height to 0.
+    <div className="relative flex-1 w-full flex">
+      <div ref={containerRef} className="flex-1 w-full" />
       {/* Ownership legend - mirrors the layer paint above */}
       <div className="absolute top-3 left-3 z-10 rounded-md border border-border/60 bg-background/90 px-3 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-2 text-xs">
