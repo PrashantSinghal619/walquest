@@ -38,6 +38,57 @@ export function ActiveWalkControls({
   const watchIdRef = useRef<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Background-suspension handling. Browsers freeze pages when the screen
+  // locks or the app is backgrounded - watchPosition stops delivering and
+  // the recorded route gets a straight-line gap (there is NO web API for
+  // background geolocation; a PWA doesn't change that).
+  //   1. Wake lock keeps the screen on during a walk so the page never
+  //      suspends in the first place.
+  //   2. Gap detection: a long silence between fixes means we missed real
+  //      route - warn the walker instead of pretending the line is real.
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const lastFixTimeRef = useRef<number | null>(null);
+  const [gapDetected, setGapDetected] = useState(false);
+  const GAP_MS = 30_000;
+
+  async function acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      }
+    } catch {
+      // Denied/unsupported (e.g. low battery mode) - tracking still works
+      // while the user keeps the screen on manually.
+    }
+  }
+
+  function releaseWakeLock() {
+    wakeLockRef.current?.release().catch(() => {});
+    wakeLockRef.current = null;
+  }
+
+  const isTracking = state.phase === "tracking";
+
+  // Hold the wake lock exactly while tracking; release on claim/discard/
+  // error/unmount via the effect cleanup.
+  useEffect(() => {
+    if (!isTracking) return;
+    acquireWakeLock();
+    return () => releaseWakeLock();
+  }, [isTracking]);
+
+  // The OS force-releases the wake lock when the page IS backgrounded
+  // anyway (nothing we can do there) - re-acquire it when the user comes
+  // back so the rest of the walk is protected.
+  useEffect(() => {
+    if (!isTracking) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") acquireWakeLock();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isTracking]);
+
   // Sync points up to parent (for map path rendering) whenever they change
   useEffect(() => {
     onPointsUpdate(points);
@@ -78,6 +129,17 @@ export function ActiveWalkControls({
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        // A long silence between fixes = the page was suspended (screen
+        // locked / app backgrounded) and real route was missed - the path
+        // will contain a straight-line jump. Surface that honestly.
+        if (
+          lastFixTimeRef.current !== null &&
+          pos.timestamp - lastFixTimeRef.current > GAP_MS
+        ) {
+          setGapDetected(true);
+        }
+        lastFixTimeRef.current = pos.timestamp;
+
         // Geolocation API: latitude, longitude → convert to GeoJSON: [lng, lat]
         const point: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setPoints((prev) => [...prev, point]);
@@ -100,6 +162,8 @@ export function ActiveWalkControls({
     setState({ phase: "starting" });
     setPoints([]);
     onPointsUpdate([]);
+    setGapDetected(false);
+    lastFixTimeRef.current = null;
 
     const result = await startWalk();
     if (!result.ok) {
@@ -113,7 +177,9 @@ export function ActiveWalkControls({
 
   function handleResume(walkId: string) {
     // Back to tracking with the same walk and accumulated points - the user
-    // can keep walking, claim again, or discard.
+    // can keep walking, claim again, or discard. Reset the fix clock so the
+    // known pause (error state, claim attempt) isn't flagged as a gap.
+    lastFixTimeRef.current = null;
     setState({ phase: "tracking", walkId });
     startGps();
   }
@@ -154,6 +220,8 @@ export function ActiveWalkControls({
     setPoints([]);
     onPointsUpdate([]);
     onPositionUpdate(null);
+    setGapDetected(false);
+    lastFixTimeRef.current = null;
     setState({ phase: "idle" });
     await discardWalk(walkId);
   }
@@ -182,6 +250,12 @@ export function ActiveWalkControls({
             <p className="text-xs text-muted-foreground tabular-nums">
               {points.length} points · {distanceKm.toFixed(2)} km
             </p>
+            {gapDetected && (
+              <p className="max-w-60 text-center text-xs text-amber-600 dark:text-amber-500">
+                Your phone dozed off mid-walk - part of this route is a
+                straight-line guess. Keep the screen on while walking!
+              </p>
+            )}
             <div className="flex gap-2 w-full">
               <Button
                 onClick={handleClaim}
