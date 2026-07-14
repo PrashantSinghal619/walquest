@@ -1,5 +1,14 @@
 # Claude-specific project instructions
 
+## Rule of thumb: generalize every failure into AGENTS.md
+
+When a bug or incident is diagnosed - especially anything that reached production or cost a debugging session - do not stop at fixing the instance. Extract the general rule that would have prevented the whole CLASS of failure, and record it in AGENTS.md before moving on.
+
+- The test for a good note: "would this have prevented the next occurrence, in a different spot?" (The maplibre-gl.css cascade trap bit the popup theme first; the instance was fixed without generalizing, and the same trap later shipped a fully blank map.)
+- Format: symptom -> root cause -> the rule going forward, in one or two lines.
+- Location: the section where someone doing related work would actually look (map notes for map traps, caching notes for cache traps) - not a graveyard appendix at the bottom.
+- Same applies to operational lessons (stale `.next` cache, deploy quirks): record the symptom and the remedy the first time, not the second.
+
 ## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
