@@ -119,6 +119,8 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 ## Roadmap
 All planned phases (3-14) are complete (13: push notifications, 14: offline tile caching).
 
+Next horizon: **React Native port** (Android + iOS) — strategy, store-account setup timeline, and sequencing live in `platforms/react-native-port.md`. Not started; the store/account track is calendar-gated and should begin before any porting code.
+
 ### Push notification notes (phase 13)
 - `lib/push.ts`: `notifyTerritoryLoss()` - reads victims' subscriptions with SUPABASE_SERVICE_ROLE_KEY (their RLS blocks the claimer's session by design), sends via web-push, deletes dead endpoints (404/410). No-ops silently unless ALL env vars present: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `SUPABASE_SERVICE_ROLE_KEY`
 - VAPID keys generated via `npx web-push generate-vapid-keys`; stored in `.env.local` AND must be set in Vercel (NEXT_PUBLIC_ var is inlined at BUILD time - adding it requires a redeploy)
@@ -165,6 +167,7 @@ app/actions/push.ts                         subscribePush / unsubscribePush Serv
 components/push-toggle.tsx                  'use client': territory-alerts toggle on profile
 public/sw.js                                service worker: push display/click + offline tile cache (openfreemap only)
 supabase/007_push.sql                       push_subscriptions table + RLS
+platforms/react-native-port.md              RN port strategy: reuse map, store-account timelines, sequencing
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
 app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell; unstable_instant = false
