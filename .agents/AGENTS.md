@@ -168,6 +168,7 @@ components/push-toggle.tsx                  'use client': territory-alerts toggl
 public/sw.js                                service worker: push display/click + offline tile cache (openfreemap only)
 supabase/007_push.sql                       push_subscriptions table + RLS
 platforms/react-native-port.md              RN port strategy: reuse map, store-account timelines, sequencing
+docs/learning-retrospective.md              project retrospective: concepts, debugging playbook, tradeoffs, skill matrix
 app/actions/walks.ts                        startWalk / completeWalk / discardWalk Server Actions
 app/api/territories/route.ts                GET -> get_territories_geojson() RPC (500 on error)
 app/(app)/layout.tsx                        cookie-promise pattern, nav chrome static shell; unstable_instant = false
