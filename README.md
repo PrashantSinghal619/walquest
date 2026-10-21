@@ -60,6 +60,13 @@ npm run test:watch  # watch mode
 
 Covers polygon validation, auth middleware, API error handling, Server Action guards, camera focus logic, and display formatting. See `.agents/skills/testing-strategy.md` for the full strategy and what deliberately isn't unit-tested (MapLibre rendering, live GPS, Realtime).
 
+## CI & Code Review
+
+Continuous Integration and automated code reviews are configured with GitHub Actions and GitHub Copilot:
+
+- **Automated Tests (`.github/workflows/ci.yml`)**: Runs Vitest test suites on pushes and PRs against `master` and `develop`.
+- **GitHub Copilot Code Review (`.github/copilot-instructions.md`)**: Custom repository instructions that guide Copilot during PR code reviews to adhere to Next.js 16 App Router conventions (`cacheComponents: true`), PostGIS coordinate order (`[lng, lat]`), and Server Action security patterns. Copilot can be assigned as a reviewer on any PR or enabled for automatic reviews in repository settings.
+
 ## Deployment
 
 No git remote is configured — deploy straight from the working tree:
