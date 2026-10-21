@@ -54,6 +54,13 @@ RPCs:
 - After rebasing an already-pushed feature branch, use `git push --force-with-lease`.
 - Keep shared `master` and `develop` history intact; rewrite only the feature branch being updated.
 
+## Codex commit identity
+
+- Codex-created commits use author and committer `Codex <codex@walquest.invalid>`, with no co-author attribution.
+- Commit through `pwsh -File scripts/codex-commit.ps1 ...`; it requires the local SSH signing configuration in the common Git directory at `codex-signing/gitconfig` and fails if missing.
+- Keep the signing key in Git metadata with restricted filesystem permissions. Registering an external signing identity is a separate decision; this local identity does not establish OpenAI or GitHub ownership.
+- Preserve personal Git defaults and existing merged attribution. Use the Codex signing configuration for rebase-generated Codex commits too.
+
 ## Git phase tags
 ```
 phase-3  MapLibre client island + OpenFreeMap tiles
