@@ -5,7 +5,7 @@ Real-time territory-conquest walking tracker for Bengaluru. Users walk a loop, c
 
 ## Tech stack
 - **Next.js 16.2.9** with `cacheComponents: true` (inverts default — everything dynamic unless explicitly `'use cache'`)
-- **React 19 canary**, TypeScript strict, Tailwind 4, shadcn/ui
+- **React 19.3**, TypeScript strict, Tailwind 4, shadcn/ui
 - **Supabase** — Postgres + PostGIS + Auth (magic link, PKCE flow) + Realtime
 - **MapLibre GL JS** + OpenFreeMap tiles (no API key, liberty style)
 - **@turf/turf 7.3.5** — polygon building server-side (simplify, kinks, area)
@@ -137,7 +137,22 @@ Vitest is set up (`vitest.config.ts`). Run with `npm test` (or `npm run test:wat
 ## Roadmap
 All planned phases (3-14) are complete (13: push notifications, 14: offline tile caching).
 
-Next horizon: **React Native port** (Android + iOS) — strategy, store-account setup timeline, and sequencing live in `platforms/react-native-port.md`. Not started; the store/account track is calendar-gated and should begin before any porting code.
+Next horizon: **React Native port** (Android + iOS) — strategy, store-account setup timeline, and sequencing live in `platforms/react-native-port.md`. Local M1 implementation is in progress; the store/account track is calendar-gated and should begin before any porting code.
+
+### Mobile client (M1 in progress)
+
+Expo SDK 58 / React Native lives in `apps/mobile`; shared geometry and formatting
+live in `packages/domain`. The web `lib` paths forward to the same source.
+React 19.3 is aligned across both apps to avoid duplicate native React versions.
+
+M1 implements a native MapLibre map, Location/TaskManager recording into SQLite,
+and Supabase PKCE magic links with SecureStore session persistence. Recorded
+walks stay local; server territory completion remains an M3 prerequisite.
+
+Use Node 24. `npm run test:mobile` covers SQLite recovery and secure session
+storage; native compilation and locked-phone recording still need device tests.
+See `platforms/mobile-implementation.md` for status and
+`platforms/mobile-m1-setup.md` before linking or submitting an EAS build.
 
 ### Push notification notes (phase 13)
 - `lib/push.ts`: `notifyTerritoryLoss()` - reads victims' subscriptions with SUPABASE_SERVICE_ROLE_KEY (their RLS blocks the claimer's session by design), sends via web-push, deletes dead endpoints (404/410). No-ops silently unless ALL env vars present: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `SUPABASE_SERVICE_ROLE_KEY`

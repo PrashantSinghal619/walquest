@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
 
       - name: Install dependencies
@@ -25,3 +25,16 @@ jobs:
 
       - name: Run Vitest tests
         run: npm test
+
+      - name: Run mobile storage and auth tests
+        run: npm run test:mobile
+
+      - name: Check mobile types
+        run: npm run typecheck --workspace @walquest/mobile
+
+      - name: Lint mobile app
+        run: npm run lint --workspace @walquest/mobile
+
+      - name: Validate native JavaScript bundles (no EAS build)
+        run: npx expo export --platform all
+        working-directory: apps/mobile

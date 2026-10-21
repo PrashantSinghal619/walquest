@@ -4,6 +4,14 @@ Walquest is a real-time territory-conquest walking game for Bengaluru built on N
 
 When reviewing pull requests and suggesting code changes, strictly adhere to the following principles:
 
+## Mobile client scope
+
+- `apps/mobile` uses Expo SDK 58, React Native and Expo Router. Apply the Next.js, browser CSS and service worker rules below to the web client.
+- Shared pure geometry and formatting live in `packages/domain`; the web `lib` paths forward to that source.
+- Preserve raw GPS timestamps and interruption segments. Distance and map lines exclude missing intervals.
+- Background tasks register at module scope and save samples to SQLite before updating the UI. Native delivery needs physical-device evidence.
+- Mobile auth uses Supabase PKCE magic links and SecureStore. Client builds contain public publishable keys only; service-role keys remain server-side.
+
 ## 1. Next.js 16 & React Server Components Architecture
 - **Dynamic by Default (`cacheComponents: true`)**: All components and routes are dynamic by default. Do not use legacy Next.js caching assumptions. Caching is opt-in via explicit `'use cache'` directives.
 - **Cache Tags**: Use `cacheTag(...)` inside `'use cache'` functions and `updateTag(...)` inside Server Actions for read-your-own-writes consistency.
