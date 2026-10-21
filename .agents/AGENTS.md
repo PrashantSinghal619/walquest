@@ -43,6 +43,14 @@ RPCs:
 - `get_territories_geojson()` -> JSON FeatureCollection — all territories, public read; after 005 properties include `owner_name` (email prefix, LEFT JOIN `auth.users`)
 - `get_leaderboard()` -> table rows — top 20 by total area, reads email from `auth.users` via SECURITY DEFINER
 
+## Git workflow
+
+- Update feature branches by fetching and rebasing onto the latest target branch.
+- Use rebase-and-merge for pull requests to keep history linear.
+- Preserve uncommitted work before rebasing; resolve conflicts and rerun relevant checks.
+- After rebasing an already-pushed feature branch, use `git push --force-with-lease`.
+- Keep shared `master` and `develop` history intact; rewrite only the feature branch being updated.
+
 ## Git phase tags
 ```
 phase-3  MapLibre client island + OpenFreeMap tiles
