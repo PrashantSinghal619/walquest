@@ -45,8 +45,11 @@ RPCs:
 
 ## Git workflow
 
+- `develop` is the integration branch for developmental changes.
+- Create feature and sub-agent branches from the latest `develop`; raise their PRs to `develop`.
+- Promote integrated changes through a PR from `develop` to `master`.
 - Update feature branches by fetching and rebasing onto the latest target branch.
-- Use rebase-and-merge for pull requests to keep history linear.
+- Use rebase-and-merge for PRs to keep history linear.
 - Preserve uncommitted work before rebasing; resolve conflicts and rerun relevant checks.
 - After rebasing an already-pushed feature branch, use `git push --force-with-lease`.
 - Keep shared `master` and `develop` history intact; rewrite only the feature branch being updated.
