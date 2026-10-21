@@ -1,0 +1,12 @@
+{
+  "name": "@walquest/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./format": "./src/format.ts",
+    "./geo/*": "./src/geo/*.ts",
+    "./recording": "./src/recording.ts"
+  },
+  "dependencies": { "@turf/turf": "^7.3.5" }
+}
