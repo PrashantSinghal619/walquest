@@ -1,0 +1,26 @@
+# EAS reads this file at the Git repository root. Keep workspace manifests and
+# the two mobile workspaces; omit web sources, local notes and Git metadata.
+/*
+!/package.json
+!/package-lock.json
+!/apps/
+!/packages/
+/apps/*
+!/apps/mobile/
+/packages/*
+!/packages/domain/
+**/node_modules/
+**/.expo/
+**/dist/
+**/android/
+**/ios/
+**/.env*
+**/credentials.json
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.p8
+**/*.mobileprovision
+**/.claude/
+**/.vscode/
+**/tests/
