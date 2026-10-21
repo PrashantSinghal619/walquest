@@ -2,6 +2,11 @@
 
 # dependencies
 /node_modules
+**/node_modules/
+**/.expo/
+apps/mobile/dist/
+apps/mobile/android/
+apps/mobile/ios/
 /.pnp
 .pnp.*
 .yarn/*
@@ -32,6 +37,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!apps/mobile/.env.example
 
 # vercel
 .vercel
@@ -41,6 +47,7 @@ yarn-error.log*
 next-env.d.ts
 
 # AI assistant — personal/local overrides only
+/.local/
 # Shared guardrails (.agents/, .claude/settings.json, .claude/skills/) ARE committed
 .claude/settings.local.json
 .cursor/

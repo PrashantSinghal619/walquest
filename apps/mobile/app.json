@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Walquest",
+    "slug": "walquest",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "walquest",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.prashantsinghal.walquest"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F1E8",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.prashantsinghal.walquest"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5F1E8",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Walquest to record your walk while your screen is locked so you can complete a territory loop.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "locationWhenInUsePermission": "Allow Walquest to show your position and record a walk you start.",
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "owner": "prashant.singhal"
+  }
+}
