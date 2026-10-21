@@ -151,9 +151,8 @@ Next horizon: **React Native port** (Android + iOS) — strategy, store-account 
 
 ## File map
 ```
-.github/workflows/pr_agent.yml              Qodo PR-Agent code review action & PR commands
+.github/copilot-instructions.md             Copilot code review guidelines (Next.js 16 / PostGIS / auth rules)
 .github/workflows/ci.yml                    Vitest CI test pipeline on push and pull requests
-.pr_agent.toml                              PR-Agent repo config (Next.js 16/PostGIS review rules)
 next.config.ts                              cacheComponents: true, instantNavigationDevToolsToggle: true
 app/manifest.ts                             PWA manifest (/manifest.webmanifest)
 components/install-prompt.tsx               'use client': beforeinstallprompt button / iOS hint (landing page)

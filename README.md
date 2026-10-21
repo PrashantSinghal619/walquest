@@ -62,23 +62,10 @@ Covers polygon validation, auth middleware, API error handling, Server Action gu
 
 ## CI & Code Review
 
-Continuous Integration and automated AI code reviews are configured with GitHub Actions and [PR-Agent (by Qodo)](https://github.com/The-PR-Agent/pr-agent):
+Continuous Integration and automated code reviews are configured with GitHub Actions and GitHub Copilot:
 
 - **Automated Tests (`.github/workflows/ci.yml`)**: Runs Vitest test suites on pushes and PRs against `master` and `develop`.
-- **PR-Agent Reviewer (`.github/workflows/pr_agent.yml`)**: Automatically generates PR descriptions and performs automated code reviews on opened/updated PRs. Responds to PR comment commands:
-  - `/review` — Comprehensive code review and actionable inline feedback
-  - `/describe` — PR summary, walkthrough, and label suggestion
-  - `/improve` — Code improvement and refactoring suggestions
-  - `/ask <question>` — Interactive Q&A about the PR diff
-- **Configuration (`.pr_agent.toml`)**: Repository-level settings tailoring reviews to Next.js 16 App Router, PostGIS geometry constraints, and security requirements.
-
-### CI Secrets Setup
-
-To enable PR-Agent, add an API key for your chosen LLM provider in GitHub repository settings (**Settings > Secrets and variables > Actions > New repository secret**):
-- `OPENAI_KEY` (for OpenAI GPT models), or
-- `ANTHROPIC_KEY` (for Anthropic Claude models)
-
-`GITHUB_TOKEN` is automatically provided by GitHub Actions.
+- **GitHub Copilot Code Review (`.github/copilot-instructions.md`)**: Custom repository instructions that guide Copilot during PR code reviews to adhere to Next.js 16 App Router conventions (`cacheComponents: true`), PostGIS coordinate order (`[lng, lat]`), and Server Action security patterns. Copilot can be assigned as a reviewer on any PR or enabled for automatic reviews in repository settings.
 
 ## Deployment
 
