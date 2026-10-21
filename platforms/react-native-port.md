@@ -1,6 +1,8 @@
 # walquest — React Native port strategy (Android + iOS)
 
-Status: PLANNED, not started. This document captures the porting strategy and
+Status: M1 implementation prepared; native/device acceptance is pending. EAS cloud builds are the selected build workflow
+(21 October 2026). Follow [the build budget and milestone plan](./mobile-build-plan.md)
+for batching, acceptance criteria, and time estimates. This document captures the porting strategy and
 the store/account setup so either can be picked up independently. The two
 tracks are deliberately separate: Track 2 is calendar-gated (reviews, waiting
 periods) and must start first; Track 1 is effort-gated.
@@ -14,28 +16,29 @@ native app with OS background-location permission fixes this.
 
 ## Track 1 — The port
 
-### What stays exactly as-is (shared backend)
+### Shared backend
 
-The 004 hardening made `claim_territory()` validate everything in SQL
-(caller identity, walk ownership + status, geometry, server-computed area,
-500 m² minimum). A native client can therefore call the same Supabase RPCs
-directly — no new API layer, no trust problem.
+Keep Supabase as the shared backend. Before mobile claiming, resolve the
+authorization, direct-write, atomic-completion and concurrency findings in
+`docs/project-handoff.md`. Mobile needs the full completion contract, including
+walk persistence, notifications and web cache refresh; calling the existing
+claim RPC alone does not provide that contract.
 
 - Supabase project: auth, Postgres + PostGIS, Realtime — unchanged
-- All SQL migrations (001-007) and RPCs — unchanged
+- Existing data and RPCs are the starting point; verified corrective migrations will be needed
 - The web app keeps running against the same database; web + native coexist
 
 ### What ports as-is (pure TypeScript)
 
 - `lib/geo/polygon.ts`, `lib/geo/focus.ts`, `lib/geo/replay.ts`, `lib/format.ts`
-- TanStack Query patterns; supabase-js (needs AsyncStorage auth adapter + URL polyfill in RN)
+- TanStack Query patterns; supabase-js (uses a SecureStore auth adapter + URL polyfill in RN)
 - Extract these into a shared package (monorepo) so web and native don't drift
 
 ### What gets rebuilt
 
 | Piece | Web today | React Native |
 |---|---|---|
-| UI framework | Next.js RSC + Server Actions | Expo + Expo Router; Server Actions replaced by direct RPC calls |
+| UI framework | Next.js RSC + Server Actions | Expo + Expo Router; shared authenticated completion contract replaces web-only Server Actions |
 | Styling | Tailwind 4 / shadcn | NativeWind + RN primitives — every screen re-laid-out |
 | Map | MapLibre GL JS | `@maplibre/maplibre-react-native` — same OpenFreeMap style URL, different component API. Requires an EAS dev build (native module - Expo Go won't run it) |
 | Auth | Magic link -> HTTP callback | Deep link (`walquest://auth`) via expo-linking, or switch to email OTP codes (better UX on a phone) |
