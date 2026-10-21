@@ -1,0 +1,37 @@
+# PR-Agent Configuration for walquest
+# Reference: https://docs.pr-agent.ai/usage-guide/configuration_options/
+
+[config]
+# Load repository architecture and guidelines as context for AI reviews
+repo_context_files = ["AGENTS.md"]
+use_repo_settings_file = true
+
+[github_action_config]
+# Automatically run /review when a PR is opened or updated
+auto_review = true
+# Automatically generate/update PR description with walkthrough
+auto_describe = true
+# Code improvement suggestions can be invoked on demand via /improve
+auto_improve = false
+pr_actions = ["opened", "reopened", "ready_for_review"]
+
+[pr_reviewer]
+# Number of code suggestions provided by the /review tool
+num_code_suggestions = 4
+# Publish code suggestions directly as inline comments on the diff
+inline_code_comments = true
+# Extra project-specific guidelines for the AI reviewer
+extra_instructions = """
+- walquest is a Next.js 16.2.9 application with cacheComponents: true (all components are dynamic by default; caching is opt-in with 'use cache').
+- Pay close attention to coordinate ordering: MapLibre/Turf/GeoJSON use [longitude, latitude] while browser Geolocation uses (latitude, longitude).
+- Verify that Server Actions in app/actions/ enforce authentication and row-level ownership checks before database/RPC calls.
+- Verify that geometry operations preserve polygon validity and maintain the minimum 500 m² claim threshold.
+- Ensure Service Worker (public/sw.js) operations remain non-load-bearing and fail gracefully to network.
+"""
+
+[pr_description]
+publish_labels = true
+add_original_user_description = true
+
+[pr_code_suggestions]
+num_code_suggestions = 4
