@@ -1,14 +1,24 @@
-# EAS reads this file at the Git repository root. Keep workspace manifests and
-# the two mobile workspaces; omit web sources, local notes and Git metadata.
-/*
+# Keep npm manifests and mobile/domain workspaces. Exclude web and local material.
+/.agents/
+/.claude/
+/.git/
+/.github/
+/.local/
+/.next/
+/.vercel/
+/agent/
+/app/
+/components/
+/docs/
+/lib/
+/platforms/
+/public/
+/scripts/
+/supabase/
+/tests/
+/*.*
 !/package.json
 !/package-lock.json
-!/apps/
-!/packages/
-/apps/*
-!/apps/mobile/
-/packages/*
-!/packages/domain/
 **/node_modules/
 **/.expo/
 **/dist/
