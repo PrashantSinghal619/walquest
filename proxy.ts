@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const PROTECTED_PREFIXES = ["/map", "/leaderboard", "/profile"];
 
 export async function proxy(request: NextRequest) {
+  // The isolated demo uses only bundled fictional data, with no auth/session IO.
+  if (request.nextUrl.pathname === "/demo") return NextResponse.next();
   // Build a mutable response we can attach refreshed cookies to.
   let response = NextResponse.next({ request });
 

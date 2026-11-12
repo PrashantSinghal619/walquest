@@ -31,6 +31,17 @@ describe("proxy middleware", () => {
   });
 
   describe("unauthenticated user", () => {
+    it("serves /demo without initializing an auth client", async () => {
+      const res = await proxy(req("/demo"));
+      expect(res.headers.get("location")).toBeNull();
+      expect(mockCreateServerClient).not.toHaveBeenCalled();
+    });
+
+    it("keeps nested personal walk routes protected", async () => {
+      mockUser(null);
+      const res = await proxy(req("/profile/walks/private-id"));
+      expect(res.headers.get("location")).toContain("/auth/login");
+    });
     it("passes through on /", async () => {
       mockUser(null);
       const res = await proxy(req("/"));
