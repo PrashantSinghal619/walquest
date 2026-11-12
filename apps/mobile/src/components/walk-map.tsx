@@ -1,13 +1,15 @@
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import type { FeatureCollection, LineString } from 'geojson';
 import { StyleSheet } from 'react-native';
+import { useMobileTheme } from '../ui/theme';
 
 export function WalkMap({ route, center }: { route: FeatureCollection<LineString>; center?: [number, number] }) {
+  const { colors } = useMobileTheme();
   return (
     <Map style={styles.map} mapStyle="https://tiles.openfreemap.org/styles/liberty">
       <Camera initialViewState={{ center: [77.5946, 12.9716], zoom: 14 }} center={center} />
       <GeoJSONSource id="recorded-route" data={route}>
-        <Layer id="recorded-route-line" type="line" paint={{ 'line-color': '#52684B', 'line-width': 5 }} />
+        <Layer id="recorded-route-line" type="line" paint={{ 'line-color': colors.route, 'line-width': 5 }} />
       </GeoJSONSource>
       {center && (
         <GeoJSONSource id="last-saved-position" data={{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: center } }}>
@@ -17,4 +19,4 @@ export function WalkMap({ route, center }: { route: FeatureCollection<LineString
     </Map>
   );
 }
-const styles = StyleSheet.create({ map: { flex: 1, minHeight: 200 } });
+const styles = StyleSheet.create({ map: { flex: 1 } });

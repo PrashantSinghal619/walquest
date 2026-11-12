@@ -2,6 +2,9 @@ import { buildReplayTrack } from '@walquest/domain/geo/replay';
 import type { WalkRecording } from '@walquest/domain/recording';
 import type { FeatureCollection, LineString } from 'geojson';
 
+// A planning assumption, not a measured stride or a pedometer reading.
+export const ASSUMED_STEP_LENGTH_M = 0.75;
+
 export function summarizeRecording(walk: WalkRecording | undefined) {
   const segments = walk?.segments ?? [];
   const samples = segments.flatMap(segment => segment.samples);
@@ -15,5 +18,6 @@ export function summarizeRecording(walk: WalkRecording | undefined) {
     })),
   };
   const last = samples.at(-1);
-  return { route, distanceM, samples: samples.length, last, gaps: segments.filter(s => s.reason === 'location-gap').length };
+  const estimatedSteps = Math.round(distanceM / ASSUMED_STEP_LENGTH_M);
+  return { route, distanceM, estimatedSteps, samples: samples.length, last, gaps: segments.filter(s => s.reason === 'location-gap').length };
 }

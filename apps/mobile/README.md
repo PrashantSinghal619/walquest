@@ -42,5 +42,6 @@ First Android execution estimate: 15–30 minutes; iOS later: 20–40 minutes.
 Both are provisional and exclude unknown queue time.
 
 See `platforms/mobile-implementation.md` at the repository root for milestone
-status and device acceptance checks. Native compilation and locked-phone behavior
-remain unverified until the first development build is installed and tested.
+status and device acceptance checks. The first Android development build finished
+and installation was reported; physical acceptance remains open. See the
+[resume acceptance record](../../platforms/mobile-m1-acceptance.md) for evidence and remaining checks.
