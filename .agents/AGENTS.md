@@ -1,5 +1,7 @@
 # walquest — Project Context
 
+Always write the project and app name as `walquest` (all lowercase), including in UI copy, documentation, and agent responses.
+
 ## What this is
 Real-time territory-conquest walking tracker for Bengaluru. Users walk a loop, close it into a polygon, claim the territory. Others can clip it by walking overlapping loops. Built as a hands-on vehicle for learning Next.js SSR and React Server Components.
 

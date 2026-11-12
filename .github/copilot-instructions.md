@@ -1,6 +1,6 @@
-# GitHub Copilot Instructions for Walquest
+# GitHub Copilot Instructions for walquest
 
-Walquest is a real-time territory-conquest walking game for Bengaluru built on Next.js 16, React 19, Supabase (Postgres + PostGIS + Auth + Realtime), and MapLibre GL JS.
+walquest is a real-time territory-conquest walking game for Bengaluru built on Next.js 16, React 19, Supabase (Postgres + PostGIS + Auth + Realtime), and MapLibre GL JS.
 
 When reviewing pull requests and suggesting code changes, strictly adhere to the following principles:
 
