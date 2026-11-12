@@ -1,6 +1,6 @@
 # Domain docs
 
-Walquest uses a single-context layout:
+walquest uses a single-context layout:
 - GLOSSARY.md at the repository root.
 - Architecture decision records under docs/adr/.
 
