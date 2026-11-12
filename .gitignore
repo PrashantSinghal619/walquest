@@ -7,6 +7,7 @@
 apps/mobile/dist/
 apps/mobile/android/
 apps/mobile/ios/
+apps/mobile/expo-env.d.ts
 /.pnp
 .pnp.*
 .yarn/*
@@ -55,3 +56,6 @@ next-env.d.ts
 .vscode/settings.json
 
 .vercel
+
+# Local archives and linked worktrees
+/.local/
