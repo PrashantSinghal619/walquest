@@ -31,6 +31,20 @@ const sample = (timestampMs, lng = 77.59, lat = 12.97) => ({
   timestampMs, coordinate: [lng, lat], accuracyM: 8, altitudeM: null, speedMps: 1.2,
 });
 
+test('step estimates start at zero and follow saved distance after reopening', async t => {
+  assert.equal(summarizeRecording(undefined).estimatedSteps, 0);
+  const { db, store } = await setup(t);
+  await store.begin(1_000);
+  await store.append([sample(2_000)]);
+  assert.equal(summarizeRecording((await store.latest()).walk).estimatedSteps, 0);
+  await store.append([sample(7_000, 77.591)]);
+  await store.finish(8_000);
+  const summary = summarizeRecording((await createRecordingStore(db).latest()).walk);
+  // This ~108m route should be roughly 144 steps with the 0.75m assumption.
+  assert.ok(summary.estimatedSteps >= 140 && summary.estimatedSteps <= 150);
+  assert.equal(summary.estimatedSteps, Math.round(summary.distanceM / 0.75));
+});
+
 test('committed raw samples survive closing and reopening the on-disk database', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'walquest-test-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -85,6 +99,7 @@ test('a gap longer than 30 seconds is represented without a connecting line', as
   assert.equal(summary.gaps, 1);
   assert.equal(summary.route.features.length, 2);
   assert.ok(summary.distanceM < 25);
+  assert.ok(summary.estimatedSteps > 0 && summary.estimatedSteps < 34, 'The large missing interval must not add estimated steps');
 });
 
 test('a batch failure rolls back all samples rather than leaving a partial saved route', async t => {

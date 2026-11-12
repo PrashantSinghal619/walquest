@@ -70,10 +70,10 @@ jobs to planned work.
 | --- | --- | --- | --- | --- | --- |
 | M0 | Local preparation: choose a supported Expo SDK, audit dependency compatibility, configure profiles/signing, extract shared logic and define recording data. | Dependency/config checks and shared tests pass; target device and signing prerequisites are known. | No cloud build | No cloud build | 0 |
 | M1 | Development client with Router, native MapLibre, Location + TaskManager, durable SQLite recording storage, secure session storage and app linking. Configure location purpose strings, background modes and Android location service. | Install and cold-launch 5 times; map renders; sign in and reopen with session preserved; a 20-minute walk including 15 minutes locked records timestamped samples to disk and reopens without losing saved samples. | 15–30 min | 20–40 min | 1–2 |
-| M2 | Recovery and permission behavior; notification library/configuration if compatible and ready, otherwise the smallest isolated integration experiment. | Denial/revocation offers recovery without crashing; a 45-minute walk with 10 minutes offline retains all samples already saved; force-close/relaunch restores those samples and marks the missing interval; notification registration and test delivery pass if included. | 15–30 min | 20–40 min | 1–2 |
+| M2 | Recovery and permission behavior; phone step counter with distance-estimate fallback, durable step-source tracking and locked-screen recovery; notification library/configuration if compatible and ready, otherwise the smallest isolated integration experiment. | Denial/revocation offers recovery without crashing; a 45-minute walk with 10 minutes offline retains saved samples and step evidence; reopening recovers counts without double-counting; pauses exclude steps; unavailable/partial sensor coverage uses clearly labelled estimates only for uncovered intervals; notification registration and test delivery pass if included. Step-specific checks and implementation brief: [mobile-step-counting.md](./mobile-step-counting.md). | 15–30 min | 20–40 min | 1–2 |
 | M3 | First installable claim-loop preview, with bundled JS for use away from the development server. Hardened completion backend, map ownership, leaderboard and login connected. | On test data, two players complete non-overlap, overlap and full-loss cases; one interrupted/retried submission creates exactly one completion; visible holdings and rankings reconcile with the database. Test actual SQL, not only mocks. | 15–30 min | 20–40 min | 1–2 |
 | M4 | Player-facing beta: profile, history/replay, territory-loss notifications and recording status/error UX. Prefer existing native libraries. | Claim, inspect history, replay and rival-loss notification work end to end; notification opens the intended screen; at least three 30-minute test walks complete without losing saved route data. | 15–30 min | 20–40 min | 1–2 |
-| M5 | Reliability candidate: tune recording, permissions and map data based on measurements; change native settings only where evidence requires it. | On each target OS, complete a 60-minute locked walk; record battery percentage-point loss, sample-gap distribution and route error against a known loop. Provisional targets: no unexplained gap over 30 seconds, distance error within 10%, battery loss at most 10 percentage points/hour. Investigate misses; document device/conditions and agree changes explicitly. | 15–30 min | 20–40 min | 1–2 |
+| M5 | Reliability candidate: tune recording, permissions, step counting and map data based on measurements; change native settings only where evidence requires it. | On each target OS, complete a 60-minute locked walk; record battery percentage-point loss, sample-gap distribution, route error against a known loop, step-count error against manually counted intervals and sensor/fallback coverage. Provisional targets: no unexplained gap over 30 seconds, distance error within 10%, battery loss at most 10 percentage points/hour; step-count tolerances follow the M2 protocol. Investigate misses; document device/conditions and agree changes explicitly. | 15–30 min | 20–40 min | 1–2 |
 | M6 | Signed release candidate for the chosen testing/store channel, with final permissions, identifiers and assets. | Installs through the target distribution channel; bundled app starts without Metro; auth, locked recording, claim and replay pass smoke tests; version/signing/privacy disclosures match the artifact. Store approval is a separate outcome. | 20–35 min | 25–45 min | 1–2 |
 
 The repeated estimates intentionally reflect the same native dependency set.
@@ -91,7 +91,14 @@ a smoke test. Validate configuration/plugin output and JS bundles locally before
 spending a cloud build. These checks reduce risk but do not prove native linking.
 
 M1 establishes the recording/auth/map foundation. M2 closes remaining planned
-native integrations, especially notifications and credentials. Add notifications
+native integrations, especially step counting, notifications and credentials.
+Phone step counting with distance-estimate fallback is required in M2; it is not
+gated on notification readiness. Batch any required activity/motion permissions
+and native modules into the M2 build. See [the implementation brief](./mobile-step-counting.md)
+before choosing a platform adapter. Background JavaScript callbacks alone do not
+satisfy locked-screen acceptance. Keep the existing build-budget policy; do not
+submit an extra build merely to add the fallback label.
+Add notifications
 to M1 only if compatibility, signing and a test path are ready; otherwise isolate
 them in M2. Do not add analytics, purchases, background fetch, or other speculative
 SDKs just to avoid a hypothetical later build.

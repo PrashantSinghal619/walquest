@@ -92,6 +92,24 @@ real-device evidence passes. See `mobile-m1-setup.md` for the exact setup/build
 checklist and device protocol.
 No EAS jobs consumed; two unforeseen-build reserves remain untouched.
 
+## M2 — planned step counting and recovery
+
+Requirement recorded 12 November 2026: prefer the phone step counter when it is
+available, permitted and covers the walk interval. Fall back to the recorded
+distance estimate when sensor coverage is unavailable; label mixed results as
+estimates and never count the same interval twice. Recover persisted evidence
+after reopening and exclude pauses.
+
+Current implementation has only the distance-based estimate (0.75m assumed step
+length) in the map panel and Walk details. Native step counting, motion/activity
+permission handling and source-aware persistence are not implemented.
+
+Implementation-day entry point: [phone step counting brief](./mobile-step-counting.md).
+It records the source-selection rules, platform feasibility checks, code entry
+points, migration and test plan, and device acceptance protocol. Integrate and
+validate this in M2 after M1 device acceptance; measure sustained reliability in
+M5. Do not mark M2 complete based on foreground-only sensor callbacks.
+
 ## Sources checked during setup
 
 - https://docs.expo.dev/versions/v58.0.0/
