@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void auth.getSession().then(({ data, error }) => {
       if (alive && eventVersion === 0) setState({ session: data.session, loading: false, configured: true, error: error ? 'Could not restore sign-in. Please try again.' : null });
     }).catch(() => {
-      if (alive) setState({ session: null, loading: false, configured: true, error: 'Could not read secure session storage. Reopen Walquest to retry.' });
+      if (alive) setState({ session: null, loading: false, configured: true, error: 'Could not read secure session storage. Reopen walquest to retry.' });
     });
     function refreshForState(active: boolean) {
       const result = active ? auth.startAutoRefresh() : auth.stopAutoRefresh();

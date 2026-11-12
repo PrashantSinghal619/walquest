@@ -19,13 +19,13 @@ export default function HomeScreen() {
 
   function explainLocation(start: () => Promise<void>) {
     Alert.alert('Record your walk',
-      'Walquest uses precise location, including while the screen is locked, during a walk you start. Points are saved on this phone. Pause or finish to stop recording. Allow background location when prompted.',
+      'walquest uses precise location, including while the screen is locked, during a walk you start. Points are saved on this phone. Pause or finish to stop recording. Allow background location when prompted.',
       [{ text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => { void start(); } }]);
   }
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.heading}>
-        <Text style={styles.title}>Walquest</Text>
+        <Text style={styles.title}>walquest</Text>
         <Text style={styles.subtitle}>{recording ? 'Recording your walk' : paused ? 'Walk paused' : saved ? 'Walk saved on this phone' : 'Walk a loop. Claim your ground.'}</Text>
       </View>
       <WalkMap route={summary.route} center={summary.last?.coordinate} />
@@ -42,13 +42,13 @@ export default function HomeScreen() {
         {(recording || paused) && <Button title="Finish and save walk" disabled={recorder.busy} onPress={() => { void recorder.finish(); }} />}
         {walk && <Button title="Share recording data" disabled={recorder.busy} onPress={() => Alert.alert('Share precise location?', 'This export contains the coordinates and times of this walk. Choose where to share it.', [
           { text: 'Cancel', style: 'cancel' }, { text: 'Continue', onPress: () => {
-            void Share.share({ message: JSON.stringify(walk, null, 2), title: 'Walquest recording' }).catch(() => Alert.alert('Could not share', 'Your recording is still saved on this phone.'));
+            void Share.share({ message: JSON.stringify(walk, null, 2), title: 'walquest recording' }).catch(() => Alert.alert('Could not share', 'Your recording is still saved on this phone.'));
           } },
         ])} />}
         {walk && <Button title="Delete saved walk" color="#A6573F" disabled={recorder.busy} onPress={() => Alert.alert('Delete this walk?', 'This removes its saved points from this phone.', [
           { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { void recorder.discard(); } },
         ])} />}
-        {recorder.error && <Button title="Open phone settings" onPress={() => { void Linking.openSettings().catch(() => Alert.alert('Open Settings', 'Open your phone settings and find Walquest to change location permissions.')); }} />}
+        {recorder.error && <Button title="Open phone settings" onPress={() => { void Linking.openSettings().catch(() => Alert.alert('Open Settings', 'Open your phone settings and find walquest to change location permissions.')); }} />}
         <Text style={styles.note}>Recording preview: walks stay on this phone. Territory claiming will be connected in a later milestone.</Text>
         <AccountPanel />
       </ScrollView>

@@ -19,7 +19,7 @@ export const MAX_SAMPLE_GAP_MS = 30_000;
 
 export async function initializeRecordingDatabase(db: SqlConnection) {
   const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  if (version && version.user_version > 1) throw new Error('This recording database needs a newer version of Walquest.');
+  if (version && version.user_version > 1) throw new Error('This recording database needs a newer version of walquest.');
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;

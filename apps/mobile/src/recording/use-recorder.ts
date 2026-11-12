@@ -30,7 +30,7 @@ export function useRecorder() {
       if (mounted.current) setError(failure instanceof Error ? failure.message : 'Something went wrong. Your saved points are kept.');
     } finally {
       try { await refresh(); }
-      catch { if (mounted.current) setError('Could not read saved walks. Check device storage and reopen Walquest.'); }
+      catch { if (mounted.current) setError('Could not read saved walks. Check device storage and reopen walquest.'); }
       operating.current = false;
       if (mounted.current) setBusy(false);
     }

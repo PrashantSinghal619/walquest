@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Walquest",
+    "name": "walquest",
     "slug": "walquest",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -43,9 +43,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Walquest to record your walk while your screen is locked so you can complete a territory loop.",
+          "locationAlwaysAndWhenInUsePermission": "Allow walquest to record your walk while your screen is locked so you can complete a territory loop.",
           "isAndroidBackgroundLocationEnabled": true,
-          "locationWhenInUsePermission": "Allow Walquest to show your position and record a walk you start.",
+          "locationWhenInUsePermission": "Allow walquest to show your position and record a walk you start.",
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true
         }

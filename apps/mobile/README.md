@@ -1,4 +1,4 @@
-# Walquest mobile
+# walquest mobile
 
 Expo SDK 58 development app. First target: Moto G45 5G, Android 15.
 iPhone 16 / iOS 26.6 configuration is retained; its device build is deferred.
