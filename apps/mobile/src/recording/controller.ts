@@ -4,7 +4,7 @@ import { getRecordingStore } from './database';
 import { LOCATION_TASK } from './task';
 
 export async function ensureRecordingPermissions() {
-  if (!(await TaskManager.isAvailableAsync())) throw new Error('Install the Walquest development build to record walks.');
+  if (!(await TaskManager.isAvailableAsync())) throw new Error('Install the walquest development build to record walks.');
   if (!(await Location.hasServicesEnabledAsync())) throw new Error('Turn on location services, then try again.');
   const foreground = await Location.requestForegroundPermissionsAsync();
   if (!hasPreciseLocation(foreground)) throw new Error('Allow precise location in Settings to record your walk.');
@@ -29,8 +29,8 @@ async function start(resume: boolean) {
       activityType: Location.ActivityType.Fitness,
       showsBackgroundLocationIndicator: true,
       foregroundService: {
-        notificationTitle: 'Walquest is recording your walk',
-        notificationBody: 'Location is saved while your screen is locked. Open Walquest to pause or finish.',
+        notificationTitle: 'walquest is recording your walk',
+        notificationBody: 'Location is saved while your screen is locked. Open walquest to pause or finish.',
         killServiceOnDestroy: true,
       },
     });

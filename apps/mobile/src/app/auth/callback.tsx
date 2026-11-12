@@ -26,7 +26,7 @@ export default function AuthCallback() {
   return (
     <View style={styles.screen}>
       <Text accessibilityRole={error ? 'alert' : undefined}>{error ?? 'Completing sign-in…'}</Text>
-      <Button title="Back to Walquest" onPress={() => router.replace('/')} />
+      <Button title="Back to walquest" onPress={() => router.replace('/')} />
     </View>
   );
 }
