@@ -14,12 +14,23 @@ const mockCreateClient = vi.mocked(createClient);
 
 function mockRpc(data: unknown, error: { message: string } | null) {
   mockCreateClient.mockResolvedValue({
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }) },
     rpc: vi.fn().mockResolvedValue({ data, error }),
   } as unknown as Awaited<ReturnType<typeof createClient>>);
 }
 
 describe("GET /api/territories", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("rejects unauthenticated access without reading live territories", async () => {
+    const rpc = vi.fn();
+    mockCreateClient.mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) }, rpc,
+    } as unknown as Awaited<ReturnType<typeof createClient>>);
+    const res = await GET();
+    expect(res.status).toBe(401);
+    expect(rpc).not.toHaveBeenCalled();
+  });
 
   it("returns GeoJSON FeatureCollection on success", async () => {
     const fc = { type: "FeatureCollection", features: [] };

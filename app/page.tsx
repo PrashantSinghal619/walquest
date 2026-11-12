@@ -41,6 +41,9 @@ export default function Home() {
           <LiveBadge />
         </Suspense>
         <Button size="lg" asChild>
+          <Link href="/demo">Try the demo — no sign-in</Link>
+        </Button>
+        <Button variant="outline" asChild>
           <Link href="/auth/login">Get started</Link>
         </Button>
         {/* Renders an install button (Chromium), an iOS hint, or nothing */}
